@@ -1,0 +1,1 @@
+{"compilerOptions":{"paths":{"@/*":["./*"]}},"exclude":["node_modules"],"extends":"@dusrel/config/tsconfig.json","include":["next-env.d.ts","**/*.ts","**/*.tsx",".next/types/**/*.ts"]}

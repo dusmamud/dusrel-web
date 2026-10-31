@@ -69,7 +69,7 @@ site hai, is repo ki app nahi.
 ## Folder structure — docs only, code aane se pehle
 
 ```
-dusrel-web/                  # total 61 md files, 0 code files
+dusrel-web/                  # total 61 md files + mail + account Phase 1 code (apps/mail, apps/account, packages/ui, locales, api-client, auth, config)
   README.md                  # ye file (web repo ke liye naya)
   docs/                      # backend ke saare 26 docs, verbatim
     00-docs-index.md
@@ -105,11 +105,11 @@ dusrel-web/                  # total 61 md files, 0 code files
     web-app-scope.md         # clients/web-app/README, verbatim copy
     WEB-DOCS-INDEX.md        # kaun sa doc kis sawaal ka jawab deta hai
   apps/
-    mail/README.md           # pehla web app — scope doc, code nahi
+    mail/README.md           # pehla web app — Phase 1 build, code hai (dekho apps/mail/README.md)
     drive/README.md          # future — scope doc, code nahi
     chat/README.md           # future — scope doc, code nahi
     meet/README.md           # future — scope doc, code nahi
-    account/README.md        # identity centre — scope doc, code nahi
+    account/README.md        # identity centre — Phase 1 build, code hai (dekho apps/account/README.md)
     landing/README.md        # stale — dusrel.com alag site hai, is repo me landing nahi banegi
   clients/                   # backend clients, verbatim (4 files)
     web-app/README.md
@@ -130,10 +130,12 @@ dusrel-web/                  # total 61 md files, 0 code files
     backend-plan.md          # backend workflows README, verbatim copy
 ```
 
-Har `apps/*` aur `packages/ui, api-client, locales` folder me abhi sirf
-ek README hai jo uska scope batata hai. Implementation files
-(`.tsx`, `.ts`, `package.json`, workflow `.yml`) tabhi add honge
-jab user us app ke liye alag se "code likho" bolega.
+Mail app, Account Centre aur shared packages (`ui`, `locales`,
+`api-client`, `auth`, `config`) me abhi code hai — Phase 1
+build (2026-10-31). Baaki `apps/*` folder me abhi sirf ek
+README hai jo uska scope batata hai. Un apps ke
+implementation files tabhi add honge jab user us app ke liye
+alag se "code likho" bolega.
 
 ## Docs kahan se aaye — copy ka sach, chhupaya nahi
 

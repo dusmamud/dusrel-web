@@ -34,6 +34,7 @@ aaye, PWA ke taur par phone/desktop par install bhi ho sakegi.
 - Build: static export (`out` folder) — Cloudflare Pages ke liye
 - Language: TypeScript, strict mode
 - UI: React 19 + Tailwind v4 + shared design system (`packages/ui/`)
+- Locales: shared `packages/locales/`, shuruwat me English + Hindi, default English (poora spec `docs/26-shared-locales.md` me)
 - State: Zustand (client state) + TanStack Query (server state)
 - Forms: React Hook Form + Zod (wahi Zod schemas jo backend ke
   `packages/api-contracts` me hain)
@@ -58,7 +59,7 @@ Poori spec `docs/20-web-app.md` me hai.
 ## Folder structure — docs only, code aane se pehle
 
 ```
-dusrel-web/                  # total 56 md files, 0 code files
+dusrel-web/                  # total 58 md files, 0 code files
   README.md                  # ye file (web repo ke liye naya)
   docs/                      # backend ke saare 26 docs, verbatim
     00-docs-index.md
@@ -87,6 +88,7 @@ dusrel-web/                  # total 56 md files, 0 code files
     23-mail-core-infra-deliverability.md
     24-mail-core-e2ee-privacy.md
     25-mail-core-day1-checklist.md
+    26-shared-locales.md     # web repo ka apna doc — shared locales, en + hi, default en (backend copy nahi)
     dusrel-backend-README.md # backend root README, verbatim copy
     web-app-scope.md         # clients/web-app/README, verbatim copy
     WEB-DOCS-INDEX.md        # kaun sa doc kis sawaal ka jawab deta hai
@@ -104,17 +106,18 @@ dusrel-web/                  # total 56 md files, 0 code files
   services/                  # backend services scope, verbatim (6 files)
     auth-api/README.md, mail-api/README.md, mail-server/README.md,
     drive-api/README.md, chat-api/README.md, meet-api/README.md
-  packages/                  # backend packages (6) + web packages (2)
+  packages/                  # backend packages (6) + web packages (3)
     auth/, crypto/, db/, api-contracts/, config/, utils/ — verbatim
     ui/README.md             # shared design system — scope doc
     api-client/README.md     # shared API client — scope doc
+    locales/README.md        # shared locales (en + hi, default en) — scope doc
   infra/README.md            # backend infra scope, verbatim
   .github/workflows/
     README.md                # web Pages deploy plan — workflow files baad me
     backend-plan.md          # backend workflows README, verbatim copy
 ```
 
-Har `apps/*` aur `packages/ui, api-client` folder me abhi sirf
+Har `apps/*` aur `packages/ui, api-client, locales` folder me abhi sirf
 ek README hai jo uska scope batata hai. Implementation files
 (`.tsx`, `.ts`, `package.json`, workflow `.yml`) tabhi add honge
 jab user us app ke liye alag se "code likho" bolega.
@@ -147,12 +150,13 @@ Baaki 43 files wahi path par hain jo backend repo me tha:
 `packages/*` (6), `infra/README.md` (1). Total: 1 + 1 + 26 + 4 +
 6 + 6 + 1 = 45.
 
-Iske upar is repo ke 11 naye md files hain: root `README.md`,
-`docs/WEB-DOCS-INDEX.md`, `docs/web-app-scope.md` (ye
+Iske upar is repo ke 13 naye md files hain: root `README.md`,
+`docs/WEB-DOCS-INDEX.md`, `docs/26-shared-locales.md` (shared
+locales — web repo ka apna doc), `docs/web-app-scope.md` (ye
 `clients/web-app/README.md` ka duplicate convenience copy hai),
-`apps/*` (5), `packages/ui, api-client` (2) aur
+`apps/*` (5), `packages/ui, api-client, locales` (3) aur
 `.github/workflows/README.md` (web plan). Isliye repo total
-45 + 11 = 56 md files hai.
+45 + 13 = 58 md files hai.
 
 Iska ek limit saaf hai: agar `dusrel-backend` ke docs badle, to
 ye copies apne aap update nahi hongi. Tab dobara sync karna

@@ -40,6 +40,9 @@ jobs:
 
       - name: Build static export
         run: npm run build:mail
+        env:
+          NEXT_PUBLIC_AUTH_API_URL: ${{ vars.NEXT_PUBLIC_AUTH_API_URL || 'https://innovative-remove-generally-amber.trycloudflare.com' }}
+          NEXT_PUBLIC_MAIL_API_URL: ${{ vars.NEXT_PUBLIC_MAIL_API_URL || 'https://whale-replies-msgid-activation.trycloudflare.com' }}
 
       - name: Smoke check static output
         run: |
@@ -67,6 +70,9 @@ jobs:
 
       - name: Build static export
         run: npm run build:mail
+        env:
+          NEXT_PUBLIC_AUTH_API_URL: ${{ vars.NEXT_PUBLIC_AUTH_API_URL || 'https://innovative-remove-generally-amber.trycloudflare.com' }}
+          NEXT_PUBLIC_MAIL_API_URL: ${{ vars.NEXT_PUBLIC_MAIL_API_URL || 'https://whale-replies-msgid-activation.trycloudflare.com' }}
 
       - name: Deploy with Wrangler (Direct Upload)
         run: npx wrangler@4 pages deploy apps/mail/out --project-name=dusrel-mail --branch=main --commit-dirty=true

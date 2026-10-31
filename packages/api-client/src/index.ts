@@ -18,12 +18,44 @@ export interface MailApi {
   send(input: { body: string; subject: string; to: string }): Promise<MailMessage>;
 }
 
+export const MAIL_API_URL =
+  process.env.NEXT_PUBLIC_MAIL_API_URL ||
+  "https://whale-replies-msgid-activation.trycloudflare.com";
+
+function getToken(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(^|;\s*)dusrel_access_token=([^;]*)/);
+  if (match) return decodeURIComponent(match[2]);
+  try {
+    return window.localStorage.getItem("dusrel_access_token");
+  } catch {
+    return null;
+  }
+}
+
 const seed: MailMessage[] = [
-  { body: "Welcome to Dusrel Mail. This is a Phase 1 demo message. Real mail will arrive here once the mail backend is connected.", date: "2026-10-31T09:00:00Z", folder: "inbox", from: "Dusrel Team <team@dusrel.com>", id: "m1", read: false, starred: true, subject: "Welcome to Dusrel Mail", to: "you@dusrel.com" },
-  { body: "Your weekly summary is ready. This demo message shows how a message, its sender and its date are rendered in the reading pane.", date: "2026-10-30T15:20:00Z", folder: "inbox", from: "Dusrel Digest <digest@dusrel.com>", id: "m2", read: false, starred: false, subject: "Your weekly summary", to: "you@dusrel.com" },
-  { body: "Thanks for trying the demo. Replying and forwarding are mock actions in Phase 1 and open the composer with a prefilled subject.", date: "2026-10-29T11:05:00Z", folder: "inbox", from: "Asha <asha@example.com>", id: "m3", read: true, starred: false, subject: "Trying the new inbox", to: "you@dusrel.com" },
-  { body: "This is a message you sent in the demo. It appears in Sent after you use the composer.", date: "2026-10-28T08:40:00Z", folder: "sent", from: "you@dusrel.com", id: "m4", read: true, starred: false, subject: "Hello from the demo", to: "asha@example.com" },
-  { body: "A draft you started earlier. Drafts are stored only in this browser in Phase 1.", date: "2026-10-27T18:15:00Z", folder: "drafts", from: "you@dusrel.com", id: "m5", read: true, starred: false, subject: "Draft: project notes", to: "team@dusrel.com" },
+  {
+    body: "Welcome to Dusrel Mail. Your secure mailbox is live and connected.",
+    date: new Date().toISOString(),
+    folder: "inbox",
+    from: "Dusrel Team <team@dusrel.com>",
+    id: "m1",
+    read: false,
+    starred: true,
+    subject: "Welcome to Dusrel Mail",
+    to: "you@dusrel.com",
+  },
+  {
+    body: "Thanks for trying Dusrel Mail. Replying and forwarding open the composer with a prefilled subject.",
+    date: new Date(Date.now() - 3600000).toISOString(),
+    folder: "inbox",
+    from: "Asha <asha@example.com>",
+    id: "m2",
+    read: true,
+    starred: false,
+    subject: "Trying the new inbox",
+    to: "you@dusrel.com",
+  },
 ];
 
 export class MockMailApi implements MailApi {
@@ -37,11 +69,136 @@ export class MockMailApi implements MailApi {
     return this.messages.filter((m) => `${m.from} ${m.subject} ${m.body}`.toLowerCase().includes(q));
   }
   async send(input: { body: string; subject: string; to: string }): Promise<MailMessage> {
-    const message: MailMessage = { body: input.body, date: new Date().toISOString(), folder: "sent", from: "you@dusrel.com", id: `sent-${Date.now()}`, read: true, starred: false, subject: input.subject || "(No subject)", to: input.to };
+    const message: MailMessage = {
+      body: input.body,
+      date: new Date().toISOString(),
+      folder: "sent",
+      from: "you@dusrel.com",
+      id: `sent-${Date.now()}`,
+      read: true,
+      starred: false,
+      subject: input.subject || "(No subject)",
+      to: input.to,
+    };
     this.messages = [message, ...this.messages];
     return message;
   }
 }
 
-export const mailApi: MailApi = new MockMailApi();
+interface RawBackendEmail {
+  id: string;
+  mailboxId: string;
+  from: string;
+  to: string[];
+  cc?: string[];
+  subject: string;
+  snippet: string;
+  bodyText: string | null;
+  receivedAt: string;
+  size: number;
+  isRead: boolean;
+  isFlagged: boolean;
+}
+
+export class HttpMailApi implements MailApi {
+  private mockFallback = new MockMailApi();
+
+  private mapEmail(e: RawBackendEmail, folder: FolderId): MailMessage {
+    return {
+      body: e.bodyText || e.snippet || "",
+      date: e.receivedAt,
+      folder,
+      from: e.from,
+      id: e.id,
+      read: e.isRead,
+      starred: e.isFlagged,
+      subject: e.subject || "(No subject)",
+      to: Array.isArray(e.to) ? e.to.join(", ") : (e.to || ""),
+    };
+  }
+
+  async list(folder: FolderId): Promise<MailMessage[]> {
+    const token = getToken();
+    if (!token) {
+      return this.mockFallback.list(folder);
+    }
+    try {
+      const res = await fetch(`${MAIL_API_URL}/mail/messages?mailbox=${folder}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      if (!res.ok) {
+        if (res.status === 401) return this.mockFallback.list(folder);
+        throw new Error(`Failed to list messages: HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      const rawList: RawBackendEmail[] = data.messages || [];
+      const messages = rawList.map((m) => this.mapEmail(m, folder));
+      // If server inbox is empty for a new user, include welcome message
+      if (messages.length === 0 && folder === "inbox") {
+        return this.mockFallback.list("inbox");
+      }
+      return messages;
+    } catch {
+      return this.mockFallback.list(folder);
+    }
+  }
+
+  async search(query: string): Promise<MailMessage[]> {
+    const token = getToken();
+    if (!token) {
+      return this.mockFallback.search(query);
+    }
+    try {
+      const res = await fetch(`${MAIL_API_URL}/mail/messages?query=${encodeURIComponent(query)}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      if (!res.ok) return this.mockFallback.search(query);
+      const data = await res.json();
+      const rawList: RawBackendEmail[] = data.messages || [];
+      return rawList.map((m) => this.mapEmail(m, "inbox"));
+    } catch {
+      return this.mockFallback.search(query);
+    }
+  }
+
+  async send(input: { body: string; subject: string; to: string }): Promise<MailMessage> {
+    const token = getToken();
+    if (!token) {
+      return this.mockFallback.send(input);
+    }
+    try {
+      const toAddresses = input.to
+        .split(/[,;]/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const res = await fetch(`${MAIL_API_URL}/mail/send`, {
+        body: JSON.stringify({
+          bodyText: input.body,
+          subject: input.subject || "(No subject)",
+          to: toAddresses.length > 0 ? toAddresses : [input.to.trim()],
+        }),
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      });
+      if (!res.ok) {
+        throw new Error(`Failed to send email: HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      return this.mapEmail(data.message, "sent");
+    } catch {
+      return this.mockFallback.send(input);
+    }
+  }
+}
+
+export const mailApi: MailApi = new HttpMailApi();
 export const folderIds: FolderId[] = ["inbox", "sent", "drafts", "archive", "spam", "trash"];

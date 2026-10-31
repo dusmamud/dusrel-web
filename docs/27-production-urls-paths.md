@@ -58,6 +58,13 @@ production domains honge:
   root public landing nahi hai (poora spec `docs/28` me).
   Uska root account home hai, login ke peeche, aur uska
   SEO goal nahi hai.
+- **Landing buttons:** har product landing page ke Login /
+  Sign up buttons seedha `account.dusrel.com/login` ya
+  `/signup` par jayenge, `return_to` tracker ke saath —
+  taaki success ke baad user usi app ke home par wapas
+  jaye (poori table + validation `docs/28` me hai).
+  Landing buttons product `/login` ke beech se nahi
+  guzrenge.
 
 ## dusrel.com / landing — is repo me IGNORE karo
 
@@ -118,14 +125,17 @@ saath. Koi app inka naam apne hisab se nahi badlega:
 | Path | Matlab (har app me ek jaisa) |
 |---|---|
 | `/` | Us product ki public landing page (SEO) — Account Centre exception hai, dekho `docs/28` |
-| `/login` | Login entry — canonical login form `account.dusrel.com/login` par hai (`docs/28`); har app ka `/login` wahan bhejega, apna form duplicate nahi karega |
+| `/login` | Login entry — canonical login form `account.dusrel.com/login` par hai (`docs/28`); har app ka `/login` wahan bhejega, apna form duplicate nahi karega; landing buttons seedha account login par jayenge, `return_to` ke saath (`docs/28` ki table dekho) |
 | `/settings` | Sirf us app ki settings (flow `docs/21` F14 jaisa, har app me apna settings content) + "Account settings" link jo `account.dusrel.com` par le jayega — account-level sections yahan duplicate nahi honge (`docs/28` ka split dekho) |
 
-- **Signup path Phase 1 me nahi hoga:** public signup
-  Phase 4 tak nahi hai (ADR-009, `docs/21` F1 — Phase 1 me
-  admin/team invite only). Isliye `/signup` ko shared path
-  list me mat samajhna; wo tabhi aayega jab public signup
-  ka alag decision hoga.
+- **Signup — URL vs timing alag hai:** canonical signup
+  URL `account.dusrel.com/signup` hai (`docs/28`), lekin
+  public signup Phase 4 tak nahi hai (ADR-009, `docs/21`
+  F1 — Phase 1 me admin/team invite only, signup page
+  invite-gated hoga). Isliye product apps me `/signup`
+  shared path nahi hai — signup entry sirf account app
+  par hai, aur landing ke Sign up button wahi jayenge,
+  `return_to` ke saath.
 - **Privacy / Terms / suite home:** ye pages har subdomain
   par duplicate nahi honge. Har app inke liye dusrel.com ke
   canonical pages par link karega (jaise

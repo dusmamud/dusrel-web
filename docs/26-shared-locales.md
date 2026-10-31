@@ -15,7 +15,10 @@ alag se "code likho" bolega (repo ka ask-first rule, README me).
 
 - **Shared package:** `packages/locales/` (scope doc:
   `packages/locales/README.md`) — har web app (mail, drive,
-  chat, meet, landing) isi se locale lega, apni copy nahi banayega.
+  chat, meet) isi se locale lega, apni copy nahi banayega.
+  CORRECTION (2026-10-31, `docs/27` ke saath): dusrel.com
+  landing isme nahi hai — wo alag Astro site hai, uski
+  locales us repo me hain, is package me nahi.
 - **Shuruwat ke locales:** sirf 2 — English (`en`) aur Hindi
   (`hi`).
 - **Default locale:** English (`en`) — jab koi preference na
@@ -51,15 +54,15 @@ packages/locales/            # scope doc only, code nahi hai
     drive.json               # sirf drive app
     chat.json                # sirf chat app
     meet.json                # sirf meet app
-    landing.json             # sirf landing app
   hi/
     common.json              # en ke saath key-parity, neeche dekho
     mail.json
     drive.json
     chat.json
     meet.json
-    landing.json
 ```
+(dusrel.com landing ka koi namespace yahan nahi hai — wo
+alag Astro site hai, dekho `docs/27`.)
 
 - Ek bada `en.json` / `hi.json` nahi hoga — namespace split
   isliye hai taaki ek app ki string badalne par dusri app ki
@@ -171,26 +174,29 @@ URL-based hai, is priority me:
 - Switch karne par login nahi tootega, aur current page ka
   counterpart khulega (upar URL rule dekho).
 
-## SEO — sirf landing app ke liye
+## SEO — har product ki landing page ke liye
 
 - App pages (mail/drive/chat/meet) login ke peeche hain, unka
   SEO goal nahi hai — `docs/20` ka noindex rule wahi rahega.
-- Landing (`dusrel.com`) par har locale page ka apna canonical
-  hoga, aur `hreflang` me `en` + `hi` dono honge, `x-default`
-  English root (`/`) hoga.
+- Har subdomain ki landing page (`docs/27` — jaise
+  `mail.dusrel.com/`) public SEO page hogi: har locale page
+  ka apna canonical hoga, aur `hreflang` me `en` + `hi` dono
+  honge, `x-default` English root (`/`) hoga.
 - Hindi landing page ka content Hindi me hoga — English page
   ko Hindi URL par duplicate karke SEO ke liye ship nahi karna
   hai; jab tak Hindi content taiyaar na ho, us page ka Hindi
   version publish nahi hoga, sirf fallback UI ke liye English
   string dikhegi.
+- dusrel.com ka SEO is doc se nahi hai — wo alag Astro site
+  hai (dekho `docs/27`).
 
 ## Nayi locale add karne ki checklist (baad me, jab user bolega)
 
 1. Locale code `packages/locales` ki list me add karo.
 2. Har namespace ki poori file us locale me banao, key-parity
    test pass karo.
-3. `/{locale}/` routes + switcher entry + landing `hreflang`
-   add karo.
+3. `/{locale}/` routes + switcher entry + har product
+   landing ka `hreflang` add karo.
 4. Date/number/plural sample us locale me check karo.
 5. Is doc me locale, date aur status update karo.
 - Bina poori checklist ke nayi locale "support" nahi mani jayegi.

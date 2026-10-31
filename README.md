@@ -10,9 +10,11 @@
 ## Ye kya hai
 
 Dusrel Web, Dusrel suite ka web client monorepo hai. Mail, Drive,
-Chat, Meet aur landing — ye sab web apps isi repo ke `apps/`
+Chat aur Meet — ye sab web apps isi repo ke `apps/`
 hisse me banengi, ek hi design system aur ek hi API client share
-karke. Backend is repo me nahi hai.
+karke. Backend is repo me nahi hai. dusrel.com landing alag
+Astro site hai (dekho `docs/27-production-urls-paths.md`), is
+repo me landing app nahi banegi.
 
 Backend ka source of truth alag repo hai:
 [https://github.com/dusmamud/dusrel-backend](https://github.com/dusmamud/dusrel-backend)
@@ -24,7 +26,7 @@ nahi likha jayega.
 ## Pehla client, pehla product
 
 Sabse pehle **Dusrel Mail ka webmail** banega (`apps/mail/`).
-Drive, Chat, Meet aur landing uske baad hain, pehle nahi.
+Drive, Chat aur Meet uske baad hain, pehle nahi.
 Web app native apps se pehle aayegi, aur jab tak native app na
 aaye, PWA ke taur par phone/desktop par install bhi ho sakegi.
 
@@ -48,18 +50,22 @@ Poori spec `docs/20-web-app.md` me hai.
 
 ## Web apps
 
-| Web app | Pages project (example) | Kaam |
+| Web app | Production URL | Kaam |
 |---|---|---|
 | mail | mail.dusrel.com | Inbox, compose, reply, folders, alias, E2EE webmail |
 | drive | drive.dusrel.com | Files, folders, sharing, upload/download |
 | chat | chat.dusrel.com | Rooms, messages, WebSocket |
 | meet | meet.dusrel.com | LiveKit rooms, video UI |
-| landing | dusrel.com | Product page, login link, privacy/terms link |
+
+Production URLs, har subdomain ka root landing page, aur
+paths same-to-same ka poora sach `docs/27-production-urls-paths.md`
+me hai. dusrel.com is table me nahi hai kyunki wo alag Astro
+site hai, is repo ki app nahi.
 
 ## Folder structure — docs only, code aane se pehle
 
 ```
-dusrel-web/                  # total 58 md files, 0 code files
+dusrel-web/                  # total 59 md files, 0 code files
   README.md                  # ye file (web repo ke liye naya)
   docs/                      # backend ke saare 26 docs, verbatim
     00-docs-index.md
@@ -89,6 +95,7 @@ dusrel-web/                  # total 58 md files, 0 code files
     24-mail-core-e2ee-privacy.md
     25-mail-core-day1-checklist.md
     26-shared-locales.md     # web repo ka apna doc — shared locales, en + hi, default en (backend copy nahi)
+    27-production-urls-paths.md # web repo ka apna doc — production URLs, root landing, same-to-same paths (backend copy nahi)
     dusrel-backend-README.md # backend root README, verbatim copy
     web-app-scope.md         # clients/web-app/README, verbatim copy
     WEB-DOCS-INDEX.md        # kaun sa doc kis sawaal ka jawab deta hai
@@ -150,13 +157,15 @@ Baaki 43 files wahi path par hain jo backend repo me tha:
 `packages/*` (6), `infra/README.md` (1). Total: 1 + 1 + 26 + 4 +
 6 + 6 + 1 = 45.
 
-Iske upar is repo ke 13 naye md files hain: root `README.md`,
+Iske upar is repo ke 14 naye md files hain: root `README.md`,
 `docs/WEB-DOCS-INDEX.md`, `docs/26-shared-locales.md` (shared
-locales — web repo ka apna doc), `docs/web-app-scope.md` (ye
+locales — web repo ka apna doc), `docs/27-production-urls-paths.md`
+(production URLs/paths — web repo ka apna doc),
+`docs/web-app-scope.md` (ye
 `clients/web-app/README.md` ka duplicate convenience copy hai),
 `apps/*` (5), `packages/ui, api-client, locales` (3) aur
 `.github/workflows/README.md` (web plan). Isliye repo total
-45 + 13 = 58 md files hai.
+45 + 14 = 59 md files hai.
 
 Iska ek limit saaf hai: agar `dusrel-backend` ke docs badle, to
 ye copies apne aap update nahi hongi. Tab dobara sync karna

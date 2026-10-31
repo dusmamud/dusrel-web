@@ -34,6 +34,7 @@ docs index bhi `docs/00-docs-index.md` me verbatim hai.
 | `24-mail-core-e2ee-privacy.md` | Key lifecycle, retention, deletion, privacy-policy content ke gaps? |
 | `25-mail-core-day1-checklist.md` | Mail Phase 1 shuru karne se pehle lock hone wali master checklist? |
 | `26-shared-locales.md` | Sab web apps ke liye shared locales kya hain — shuruwat me en + hi, default en? (web repo ka apna doc, backend copy nahi) |
+| `27-production-urls-paths.md` | Har app ka production URL kya hai, root par uski landing kyu hai, aur paths sab apps me same-to-same kaise hain? dusrel.com kyu alag hai? (web repo ka apna doc, backend copy nahi) |
 
 ## Backend ke baaki scope docs — is repo me kahan hain
 
@@ -41,6 +42,7 @@ Backend ke saare 45 md files ki content is repo me hai:
 
 - `docs/00-25` (26 files) — upar wali poori list
 - `docs/26-shared-locales.md` (1 file) — web repo ka apna doc, backend copy nahi; isliye backend ke 26 docs ke alag se hai
+- `docs/27-production-urls-paths.md` (1 file) — web repo ka apna doc, backend copy nahi; production URLs + paths ka sach
 - `docs/dusrel-backend-README.md` — backend root README
 - `clients/*` (4), `services/*` (6), `packages/auth, crypto,
   db, api-contracts, config, utils` (6), `infra/README.md` (1)

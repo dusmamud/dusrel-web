@@ -23,6 +23,7 @@ production domains honge:
 | Drive | https://drive.dusrel.com | drive — alag project |
 | Chat | https://chat.dusrel.com | chat — alag project |
 | Meet | https://meet.dusrel.com | meet — alag project |
+| Account Centre | https://account.dusrel.com | account — alag project (identity centre, product app nahi — poora spec `docs/28` me) |
 
 - Har app ka alag Cloudflare Pages project, alag env, alag
   deploy workflow hoga (`docs/20` ka rule wahi rahega) — ek
@@ -53,6 +54,10 @@ production domains honge:
   liye" wale frame se badlav hai, aur is doc se supersede
   hota hai. Login ke peeche wale app pages par `noindex`
   ka rule wahi rahega.
+- **Exception — Account Centre:** `account.dusrel.com` ka
+  root public landing nahi hai (poora spec `docs/28` me).
+  Uska root account home hai, login ke peeche, aur uska
+  SEO goal nahi hai.
 
 ## dusrel.com / landing — is repo me IGNORE karo
 
@@ -112,9 +117,9 @@ saath. Koi app inka naam apne hisab se nahi badlega:
 
 | Path | Matlab (har app me ek jaisa) |
 |---|---|
-| `/` | Us product ki public landing page (SEO) |
-| `/login` | Login — SSO flow (`docs/05`, `docs/21` F3 ke hisab se) |
-| `/settings` | Account + us app ki settings (flow `docs/21` F14 jaisa, har app me apna settings content) |
+| `/` | Us product ki public landing page (SEO) — Account Centre exception hai, dekho `docs/28` |
+| `/login` | Login entry — canonical login form `account.dusrel.com/login` par hai (`docs/28`); har app ka `/login` wahan bhejega, apna form duplicate nahi karega |
+| `/settings` | Sirf us app ki settings (flow `docs/21` F14 jaisa, har app me apna settings content) + "Account settings" link jo `account.dusrel.com` par le jayega — account-level sections yahan duplicate nahi honge (`docs/28` ka split dekho) |
 
 - **Signup path Phase 1 me nahi hoga:** public signup
   Phase 4 tak nahi hai (ADR-009, `docs/21` F1 — Phase 1 me
@@ -133,7 +138,10 @@ saath. Koi app inka naam apne hisab se nahi badlega:
   `drive.dusrel.com/settings`). Jahan wo path target app me
   nahi hai (jaise `/inbox` se drive jaana), switcher target
   app ke home par le jayega (Drive ke liye `/files`),
-  toote hue path par nahi.
+  toote hue path par nahi. Account Centre par jaane par
+  switcher hamesha account home (`account.dusrel.com/`) par
+  le jayega, kyunki account ke paths product apps se alag
+  hain (`docs/28`).
 
 ## Har app ka app home + shuruati paths — DRAFT inventory
 
@@ -162,7 +170,7 @@ ke hisab se hain:
 | `/spam` | Spam folder |
 | `/trash` | Trash folder |
 | `/search` | Search + filters (F13) |
-| `/settings` | Settings (F14) — shared path |
+| `/settings` | App settings only (F14) — account settings ka link `account.dusrel.com` par (`docs/28`) |
 
 ### Drive — `drive.dusrel.com` (DRAFT — app spec me lock hona baaki hai)
 
@@ -173,7 +181,7 @@ ke hisab se hain:
 | `/files` | App home — Files |
 | `/shared` | Shared files/folders |
 | `/folder/<id>` | Ek folder ka view |
-| `/settings` | Settings — shared path |
+| `/settings` | App settings only — account settings ka link `account.dusrel.com` par (`docs/28`) |
 
 ### Chat — `chat.dusrel.com` (DRAFT — app spec me lock hona baaki hai)
 
@@ -183,7 +191,7 @@ ke hisab se hain:
 | `/login` | Login |
 | `/rooms` | App home — Rooms list |
 | `/room/<id>` | Ek room ka chat view |
-| `/settings` | Settings — shared path |
+| `/settings` | App settings only — account settings ka link `account.dusrel.com` par (`docs/28`) |
 
 ### Meet — `meet.dusrel.com` (DRAFT — app spec me lock hona baaki hai)
 
@@ -193,7 +201,7 @@ ke hisab se hain:
 | `/login` | Login |
 | `/join` | App home — Join by code/link |
 | `/room/<code>` | Ek meeting room ka video view |
-| `/settings` | Settings — shared path |
+| `/settings` | App settings only — account settings ka link `account.dusrel.com` par (`docs/28`) |
 
 ## Kya is doc me nahi hai (OPEN, alag decision chahiye)
 
@@ -203,6 +211,10 @@ ke hisab se hain:
 - Cross-subdomain SSO session ka rule (ek subdomain par login
   dusre par kaise chalega) — `docs/20` me token storage bhi
   OPEN hai, isliye is doc me us par koi dawa nahi hai.
+  Account Centre (`docs/28`) ke saath ye rule account app
+  banne se pehle lock karna hoga; canonical login aur
+  `return_to` allowlist `docs/28` me locked hai, session
+  scope abhi bhi OPEN hai.
 - DNS / Cloudflare Pages project ka asli setup — ye doc
   sirf URL ka sach hai, DNS record ya Pages project banana
   is doc se nahi ho raha hai.

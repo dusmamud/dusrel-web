@@ -1,9 +1,10 @@
 # packages/locales — scope doc only, no code yet
 
 Shared locales — har web app (mail, drive, chat, meet)
-isi package se apni bhasha lega, apni copy nahi
-banayega. dusrel.com landing isme nahi hai — wo alag
-Astro site hai (dekho `docs/27-production-urls-paths.md`).
+aur Account Centre (account.dusrel.com) isi package se
+apni bhasha lega, apni copy nahi banayega. dusrel.com
+landing isme nahi hai — wo alag Astro site hai (dekho
+`docs/27-production-urls-paths.md`).
 
 Shuruwat ke locales: English (`en`) + Hindi (`hi`).
 Default locale: English (`en`).

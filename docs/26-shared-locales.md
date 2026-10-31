@@ -15,7 +15,8 @@ alag se "code likho" bolega (repo ka ask-first rule, README me).
 
 - **Shared package:** `packages/locales/` (scope doc:
   `packages/locales/README.md`) — har web app (mail, drive,
-  chat, meet) isi se locale lega, apni copy nahi banayega.
+  chat, meet) aur Account Centre (account.dusrel.com, dekho
+  `docs/28`) isi se locale lega, apni copy nahi banayega.
   CORRECTION (2026-10-31, `docs/27` ke saath): dusrel.com
   landing isme nahi hai — wo alag Astro site hai, uski
   locales us repo me hain, is package me nahi.
@@ -54,12 +55,14 @@ packages/locales/            # scope doc only, code nahi hai
     drive.json               # sirf drive app
     chat.json                # sirf chat app
     meet.json                # sirf meet app
+    account.json             # sirf account centre app
   hi/
     common.json              # en ke saath key-parity, neeche dekho
     mail.json
     drive.json
     chat.json
     meet.json
+    account.json
 ```
 (dusrel.com landing ka koi namespace yahan nahi hai — wo
 alag Astro site hai, dekho `docs/27`.)
@@ -178,6 +181,9 @@ URL-based hai, is priority me:
 
 - App pages (mail/drive/chat/meet) login ke peeche hain, unka
   SEO goal nahi hai — `docs/20` ka noindex rule wahi rahega.
+  Account Centre ke pages bhi login ke peeche hain, unka bhi
+  SEO goal nahi hai (`docs/28` — account root public landing
+  nahi hai).
 - Har subdomain ki landing page (`docs/27` — jaise
   `mail.dusrel.com/`) public SEO page hogi: har locale page
   ka apna canonical hoga, aur `hreflang` me `en` + `hi` dono

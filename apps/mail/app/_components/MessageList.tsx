@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { FolderId, MailMessage } from "@dusrel/api-client";
 import { t, type Locale } from "@dusrel/locales";
 import { Button } from "@dusrel/ui";
@@ -30,6 +30,15 @@ export function splitSender(from: string): { name: string; address: string | nul
   const match = from.match(/^(.*?)<([^>]+)>\s*$/);
   if (match) return { name: match[1].trim() || match[2], address: match[2] };
   return { name: from, address: null };
+}
+
+/** Split a formatted message time into its clock/date part and, when present,
+    the "(X seconds/minutes ago)" suffix — so the row can hide just the suffix
+    on small screens without changing the format used by the reading view. */
+function splitTimeParts(formatted: string): { time: string; suffix: string | null } {
+  const match = formatted.match(/^(.*) \((.*)\)$/);
+  if (!match) return { time: formatted, suffix: null };
+  return { time: match[1], suffix: match[2] };
 }
 
 const AVATAR_COLORS = [
@@ -66,6 +75,9 @@ export interface MessageListProps {
   onSelect: (id: string) => void;
   onToggleStar: (id: string) => void;
   onMarkAllRead: () => void;
+  onMoveToTrash?: (id: string) => void;
+  onMoveToJunk?: (id: string) => void;
+  onToggleRead?: (id: string) => void;
   onGoInbox?: () => void;
   onNewSearch?: () => void;
   query?: string;
@@ -103,6 +115,9 @@ export function MessageList({
   onSelect,
   onToggleStar,
   onMarkAllRead,
+  onMoveToTrash,
+  onMoveToJunk,
+  onToggleRead,
   onGoInbox,
   onNewSearch,
   query,
@@ -119,10 +134,11 @@ export function MessageList({
       case "starred":
         return messages.filter((m) => m.starred);
       case "attachments":
+        // Only messages that actually carry attachment metadata match.
+        return messages.filter((m) => (m.attachmentNames?.length ?? 0) > 0);
       case "encrypted":
-        // MailMessage carries no attachments or encryption data, so these
-        // filters can never match honestly. They yield the empty state.
-        return [];
+        // Only messages with a non-default encryption choice match.
+        return messages.filter((m) => !!m.encryption && m.encryption !== "standard");
       default:
         return messages;
     }
@@ -196,11 +212,20 @@ export function MessageList({
 
   const [filterOpen, setFilterOpen] = useState(false);
 
+  useEffect(() => {
+    if (!filterOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFilterOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [filterOpen]);
+
   return (
     <div className="w-full bg-white text-slate-900 dark:bg-[#121212] dark:text-[#e8eaed]">
       {isSearch ? <h2 className="px-4 pt-4 text-lg font-semibold">{title}</h2> : null}
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-3 py-3 dark:border-white/10">
-        <button type="button" onClick={toggleSelectAll} aria-label={t(locale, "msgSelectAll")} className="inline-flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-[#e8eaed]">
+        <button type="button" onClick={toggleSelectAll} aria-label={t(locale, "msgSelectAll")} aria-pressed={allVisibleSelected} className="inline-flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-[#e8eaed]">
           <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="9" />{allVisibleSelected ? <path d="M8 12.5l2.5 2.5L16 9.5" /> : null}</svg>
           {t(locale, "msgSelectAll")}
         </button>
@@ -243,15 +268,30 @@ export function MessageList({
             const sender = splitSender(message.from);
             const initial = (sender.name.charAt(0) || "?").toUpperCase();
             const isSelected = message.id === selectedId;
+            const timeParts = splitTimeParts(formatMessageTime(message.date, locale));
             return (
               <li key={message.id}>
                 <div
                   onClick={() => onSelect(message.id)}
-                  className={`group flex cursor-pointer items-center gap-2 border-b border-slate-200 px-4 py-2 hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/5 ${
+                  onKeyDown={(e) => {
+                    // Only the row itself opens on Enter/Space. Inner tab stops
+                    // (checkbox, star) handle their own keys; ignoring bubbled
+                    // events here stops Space on the checkbox from also opening
+                    // the message.
+                    if (e.target !== e.currentTarget) return;
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSelect(message.id);
+                    }
+                  }}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`${sender.name}: ${message.subject}`}
+                  className={`group flex cursor-pointer items-center gap-2 border-b border-slate-200 px-4 py-2 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#4d90fe]/50 dark:border-white/10 dark:hover:bg-white/5 ${
                     isSelected ? "bg-slate-100 dark:bg-white/10" : ""
                   }`}
                 >
-                  {!message.read ? <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-green-500" /> : null}
+                  <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${message.read ? "bg-transparent" : "bg-green-500"}`} />
                   <input
                     type="checkbox"
                     checked={selected.has(message.id)}
@@ -287,9 +327,50 @@ export function MessageList({
                     {message.subject}
                   </span>
                   <span className="hidden min-w-0 flex-1 truncate text-sm text-slate-500 sm:block dark:text-slate-400">{message.body}</span>
-                  <span className="shrink-0 text-[13px] text-slate-500 dark:text-slate-400">
-                    {formatMessageTime(message.date, locale)}
+                  <span className="shrink-0 text-[13px] text-slate-500 group-hover:hidden group-focus-within:hidden dark:text-slate-400">
+                    {timeParts.time}
+                    {timeParts.suffix ? <span className="hidden sm:inline"> ({timeParts.suffix})</span> : null}
                   </span>
+                  {onMoveToTrash && onMoveToJunk && onToggleRead ? (
+                    <span className="hidden shrink-0 items-center gap-1 group-hover:flex group-focus-within:flex">
+                      <button
+                        type="button"
+                        aria-label={t(locale, "msgMoveToTrash")}
+                        title={t(locale, "msgMoveToTrash")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onMoveToTrash(message.id);
+                        }}
+                        className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:hover:bg-white/10 dark:hover:text-slate-200"
+                      >
+                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={t(locale, "msgMoveToJunk")}
+                        title={t(locale, "msgMoveToJunk")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onMoveToJunk(message.id);
+                        }}
+                        className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:hover:bg-white/10 dark:hover:text-slate-200"
+                      >
+                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="4.93" y1="4.93" x2="19.07" y2="19.07" /></svg>
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={t(locale, message.read ? "msgMarkUnread" : "msgMarkRead")}
+                        title={t(locale, message.read ? "msgMarkUnread" : "msgMarkRead")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleRead(message.id);
+                        }}
+                        className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:hover:bg-white/10 dark:hover:text-slate-200"
+                      >
+                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>
+                      </button>
+                    </span>
+                  ) : null}
                 </div>
               </li>
             );

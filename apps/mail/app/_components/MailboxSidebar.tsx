@@ -12,14 +12,48 @@ export type MailboxFolder = {
   count: number;
 };
 
-const FOLDER_ICONS: Record<string, string> = {
-  inbox: "✉",
-  sent: "↗",
-  drafts: "✎",
-  archive: "▦",
-  spam: "⊘",
-  trash: "⌫",
+const FOLDER_ICON_PATHS: Record<string, ReactNode> = {
+  inbox: (
+    <>
+      <path d="M22 12h-6l-2 3h-4l-2-3H2" />
+      <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+    </>
+  ),
+  sent: (
+    <>
+      <line x1="22" y1="2" x2="11" y2="13" />
+      <polygon points="22 2 15 22 11 13 2 9 22 2" />
+    </>
+  ),
+  drafts: <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />,
+  archive: (
+    <>
+      <polyline points="21 8 21 21 3 21 3 8" />
+      <rect x="1" y="3" width="22" height="5" />
+      <line x1="10" y1="12" x2="14" y2="12" />
+    </>
+  ),
+  spam: (
+    <>
+      <circle cx="12" cy="12" r="10" />
+      <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+    </>
+  ),
+  trash: (
+    <>
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </>
+  ),
 };
+
+function FolderIcon({ id }: { id: string }) {
+  return (
+    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-slate-400">
+      {FOLDER_ICON_PATHS[id] ?? <rect x="3" y="3" width="18" height="18" rx="2" />}
+    </svg>
+  );
+}
 
 export function MailboxSidebar({
   locale,
@@ -68,11 +102,11 @@ export function MailboxSidebar({
       <div className="px-4 py-3">
         {/* Plain button, not @dusrel/ui Button: ui Button spreads props after
             its own className, so a w-full className would drop its base styles. */}
-        <button type="button" onClick={onCompose} className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-base font-medium text-white transition-colors hover:bg-black dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">
+        <button type="button" onClick={onCompose} className="w-full rounded-xl bg-slate-900 px-4 py-2 text-base font-medium text-white transition-colors hover:bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">
           + {t(locale, "shellCompose")}
         </button>
       </div>
-      <button type="button" onClick={onOpenPrivacyCenter} className="flex w-full items-center justify-between border-y border-slate-200 px-4 py-2 text-left text-[15px] text-slate-700 hover:bg-slate-100 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">
+      <button type="button" onClick={onOpenPrivacyCenter} className="flex w-full items-center justify-between border-y border-slate-200 px-4 py-2 text-left text-[15px] text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 focus-visible:ring-inset dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">
         <span className="flex items-center gap-2">
           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-slate-400"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
           <span className="uppercase">{t(locale, "shellPrivacyCenter")}</span>
@@ -81,7 +115,7 @@ export function MailboxSidebar({
       </button>
       <div className="mt-4 flex items-center justify-between px-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t(locale, "shellFolders")}</p>
-        <button type="button" onClick={() => setDialogOpen(true)} aria-label={t(locale, "shellAddFolder")} className="rounded-md px-3 py-2 text-lg leading-none text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5">
+        <button type="button" onClick={() => setDialogOpen(true)} aria-label={t(locale, "shellAddFolder")} className="rounded-md px-3 py-2 text-lg leading-none text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-slate-300 dark:hover:bg-white/5">
           +
         </button>
       </div>
@@ -92,10 +126,10 @@ export function MailboxSidebar({
             type="button"
             onClick={() => onSelect(f.id)}
             aria-current={activeId === f.id ? "page" : undefined}
-            className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-[15px] ${activeId === f.id ? "bg-slate-100 font-medium text-slate-900 dark:bg-white/10 dark:text-[#e8eaed]" : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5"}`}
+            className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 ${activeId === f.id ? "bg-slate-100 font-medium text-slate-900 dark:bg-white/10 dark:text-[#e8eaed]" : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5"}`}
           >
             <span className="flex min-w-0 flex-1 items-center gap-2">
-              <span aria-hidden="true" className="shrink-0 text-slate-400">{FOLDER_ICONS[f.id] ?? "▢"}</span>
+              <FolderIcon id={f.id} />
               <span className="truncate">{f.label}</span>
             </span>
             {f.count > 0 && <span className="shrink-0 rounded-full bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600 dark:bg-white/10 dark:text-slate-300">{f.count}</span>}
@@ -104,7 +138,7 @@ export function MailboxSidebar({
       </nav>
       <div className="mt-4 flex items-center justify-between px-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t(locale, "shellAliases")}</p>
-        <button type="button" onClick={onCreateAlias} aria-label={t(locale, "shellAddAlias")} className="rounded-md px-3 py-2 text-lg leading-none text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5">
+        <button type="button" onClick={onCreateAlias} aria-label={t(locale, "shellAddAlias")} className="rounded-md px-3 py-2 text-lg leading-none text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-slate-300 dark:hover:bg-white/5">
           +
         </button>
       </div>

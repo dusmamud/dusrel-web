@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t, type Locale } from "@dusrel/locales";
 import { Badge, Button } from "@dusrel/ui";
 
@@ -23,15 +23,40 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: (val
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${checked ? "bg-[#4d90fe]" : "bg-slate-300 dark:bg-white/20"}`}
+      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 ${checked ? "bg-[#4d90fe]" : "bg-slate-300 dark:bg-white/20"}`}
     >
       <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${checked ? "left-[22px]" : "left-0.5"}`} />
     </button>
   );
 }
 
-function SectionTitle({ children }: { children: string }) {
-  return <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{children}</h3>;
+function SectionTitle({ children, open, onToggle }: { children: string; open: boolean; onToggle: () => void }) {
+  return (
+    <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-3 rounded-lg py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50"
+      >
+        <span>{children}</span>
+        <svg
+          aria-hidden="true"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`shrink-0 text-slate-400 transition-transform ${open ? "" : "rotate-180"}`}
+        >
+          <path d="M6 15l6-6 6 6" />
+        </svg>
+      </button>
+    </h3>
+  );
 }
 
 function RowIcon({ name }: { name: "person" | "lock" | "shield" | "eye" | "file" | "sparkle" }) {
@@ -59,11 +84,36 @@ function RowIcon({ name }: { name: "person" | "lock" | "shield" | "eye" | "file"
 }
 
 export function PrivacyCenter({ locale, onBack, hasRecoveryEmail, onCreateAlias, onSelectEncryption, accountCentreUrl = "https://account.dusrel.com/", variant = "panel" }: PrivacyCenterProps) {
-  // Local display preferences only. The parent owns persistence; nothing here
-  // talks to an API, and real account-level security lives in the Account Centre.
+  // Security Helper persists to the shared localStorage key below — the same
+  // key the SettingsPanel switch is persisted to via MailApp props — so both
+  // switches read one source of truth. Two-factor stays local display state;
+  // real account-level security lives in the Account Centre.
   const [securityHelper, setSecurityHelper] = useState(false);
   const [twoFactor, setTwoFactor] = useState(false);
   const [promptDismissed, setPromptDismissed] = useState(false);
+  const [collapsed, setCollapsed] = useState({ security: false, hide: false, secure: false });
+
+  // Read on mount only, so server and client render the same first pass.
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem("dusrel-mail-security-helper");
+      if (stored === "true" || stored === "false") setSecurityHelper(stored === "true");
+    } catch {
+      // Private mode must not break the panel.
+    }
+  }, []);
+
+  const handleSecurityHelper = (value: boolean) => {
+    setSecurityHelper(value);
+    try {
+      window.localStorage.setItem("dusrel-mail-security-helper", value ? "true" : "false");
+    } catch {
+      // Private mode must not break the panel.
+    }
+  };
+
+  const toggleSection = (section: "security" | "hide" | "secure") =>
+    setCollapsed((prev) => ({ ...prev, [section]: !prev[section] }));
 
   const linkClass = "text-sm font-medium text-[#4d90fe] hover:underline";
 
@@ -95,19 +145,25 @@ export function PrivacyCenter({ locale, onBack, hasRecoveryEmail, onCreateAlias,
 
       <div className="space-y-5">
         <section className="space-y-4">
-          <SectionTitle>{t(locale, "pcSecurityTitle")}</SectionTitle>
-          <div className={sidebar ? "flex flex-col items-start gap-1" : "flex items-center justify-between gap-3"}>
+          <SectionTitle open={!collapsed.security} onToggle={() => toggleSection("security")}>{t(locale, "pcSecurityTitle")}</SectionTitle>
+          {!collapsed.security && (
+            <>
+          <a
+            href={accountCentreUrl}
+            aria-label={!hasRecoveryEmail ? `${t(locale, "pcRecoveryEmail")} — ${t(locale, "pcRecoveryAction")}` : undefined}
+            className="flex items-center justify-between gap-3 rounded-lg px-2 py-2 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:hover:bg-white/5"
+          >
             <span className="flex items-center gap-2 text-[15px] text-slate-900 dark:text-[#e8eaed]"><RowIcon name="person" />{t(locale, "pcRecoveryEmail")}</span>
-            <span className={sidebar ? "flex flex-wrap items-center gap-2" : "flex items-center gap-3"}>
-              {!hasRecoveryEmail && <Badge>{t(locale, "pcRecoveryAction")}</Badge>}
-              <a className={linkClass} href={accountCentreUrl}>
-                {hasRecoveryEmail ? t(locale, "pcRecoveryManage") : t(locale, "pcRecoveryAdd")}
-              </a>
+            <span className="flex shrink-0 items-center gap-2">
+              {!hasRecoveryEmail && (
+                <span aria-hidden="true" title={t(locale, "pcRecoveryAction")} className="h-2 w-2 rounded-full bg-amber-500" />
+              )}
+              <span aria-hidden="true" className="text-slate-400">›</span>
             </span>
-          </div>
+          </a>
           <div className="flex items-center justify-between gap-3">
             <span className="flex items-center gap-2 text-[15px] text-slate-900 dark:text-[#e8eaed]"><RowIcon name="lock" />{t(locale, "pcSecurityHelper")}</span>
-            <Switch checked={securityHelper} onChange={setSecurityHelper} label={t(locale, "pcSecurityHelper")} />
+            <Switch checked={securityHelper} onChange={handleSecurityHelper} label={t(locale, "pcSecurityHelper")} />
           </div>
           <div>
             <div className="flex items-center justify-between gap-3">
@@ -121,10 +177,14 @@ export function PrivacyCenter({ locale, onBack, hasRecoveryEmail, onCreateAlias,
               </a>
             </p>
           </div>
+            </>
+          )}
         </section>
 
         <section className="space-y-4 border-t border-slate-200 pt-5 dark:border-white/10">
-          <SectionTitle>{t(locale, "pcHideTitle")}</SectionTitle>
+          <SectionTitle open={!collapsed.hide} onToggle={() => toggleSection("hide")}>{t(locale, "pcHideTitle")}</SectionTitle>
+          {!collapsed.hide && (
+            <>
           {sidebar ? (
             <div className="flex items-center justify-between gap-3">
               <span className="flex items-center gap-2 text-[15px] text-slate-400"><RowIcon name="eye" />{t(locale, "pcHideMyEmail")}</span>
@@ -137,26 +197,30 @@ export function PrivacyCenter({ locale, onBack, hasRecoveryEmail, onCreateAlias,
             </div>
           )}
           <div>
-            <button type="button" onClick={onCreateAlias} className="flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[15px] text-slate-900 hover:bg-slate-100 dark:text-[#e8eaed] dark:hover:bg-white/5">
+            <button type="button" onClick={onCreateAlias} className="flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[15px] text-slate-900 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-[#e8eaed] dark:hover:bg-white/5">
               <span aria-hidden="true" className="flex h-[18px] w-[18px] shrink-0 items-center justify-center text-slate-400">@</span>
               {t(locale, "pcCreateAlias")}
             </button>
           </div>
+            </>
+          )}
         </section>
 
         <section className="space-y-4 border-t border-slate-200 pt-5 dark:border-white/10">
-          <SectionTitle>{t(locale, "pcSecureTitle")}</SectionTitle>
+          <SectionTitle open={!collapsed.secure} onToggle={() => toggleSection("secure")}>{t(locale, "pcSecureTitle")}</SectionTitle>
+          {!collapsed.secure && (
           <div className="flex flex-col gap-1">
-            <button type="button" onClick={() => onSelectEncryption("password")} className="flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[15px] text-slate-900 hover:bg-slate-100 dark:text-[#e8eaed] dark:hover:bg-white/5">
+            <button type="button" onClick={() => onSelectEncryption("password")} className="flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[15px] text-slate-900 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-[#e8eaed] dark:hover:bg-white/5">
               <RowIcon name="lock" />{t(locale, "pcEncryptPassword")}
             </button>
-            <button type="button" onClick={() => onSelectEncryption("file")} className="flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[15px] text-slate-900 hover:bg-slate-100 dark:text-[#e8eaed] dark:hover:bg-white/5">
+            <button type="button" onClick={() => onSelectEncryption("file")} className="flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[15px] text-slate-900 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-[#e8eaed] dark:hover:bg-white/5">
               <RowIcon name="file" />{t(locale, "pcEncryptFile")}
             </button>
-            <button type="button" onClick={() => onSelectEncryption("dusrel")} className="flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[15px] text-slate-900 hover:bg-slate-100 dark:text-[#e8eaed] dark:hover:bg-white/5">
+            <button type="button" onClick={() => onSelectEncryption("dusrel")} className="flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[15px] text-slate-900 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-[#e8eaed] dark:hover:bg-white/5">
               <RowIcon name="sparkle" />{t(locale, "pcEncryptDusrel")}
             </button>
           </div>
+          )}
         </section>
       </div>
     </div>

@@ -26,6 +26,12 @@ export interface SettingsPanelProps {
   accountCentreUrl?: string;
   downloadSlot?: ReactNode;
   onClose?: () => void;
+  // Optional controlled Security Helper state. When MailApp passes these, this
+  // switch shares the same localStorage key as PrivacyCenter's switch (the
+  // persistence itself lives in MailApp); otherwise it falls back to local
+  // state, exactly as before.
+  securityHelper?: boolean;
+  onSecurityHelperChange?: (value: boolean) => void;
 }
 
 function Switch({ checked, onChange, label }: { checked: boolean; onChange: (value: boolean) => void; label: string }) {
@@ -36,7 +42,7 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: (val
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${checked ? "bg-[#4d90fe]" : "bg-slate-300 dark:bg-white/20"}`}
+      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 ${checked ? "bg-[#4d90fe]" : "bg-slate-300 dark:bg-white/20"}`}
     >
       <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${checked ? "left-[22px]" : "left-0.5"}`} />
     </button>
@@ -47,7 +53,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <span className="text-sm text-slate-900 dark:text-[#e8eaed]">{label}</span>
-      <span className="flex items-center gap-3">{children}</span>
+      <span className="flex flex-1 items-center justify-end gap-3">{children}</span>
     </div>
   );
 }
@@ -67,12 +73,22 @@ export function SettingsPanel({
   accountCentreUrl = "https://account.dusrel.com/",
   downloadSlot,
   onClose,
+  securityHelper: securityHelperProp,
+  onSecurityHelperChange,
 }: SettingsPanelProps) {
   const [activeSection, setActiveSection] = useState<SettingsSection>("account");
   const [time24h, setTime24h] = useState(true);
   const [autoTimezone, setAutoTimezone] = useState(true);
   const [browserTimezone, setBrowserTimezone] = useState("");
-  const [securityHelper, setSecurityHelper] = useState(false);
+  const [localSecurityHelper, setLocalSecurityHelper] = useState(false);
+  // Settings owned here persist in localStorage (same contract keys the
+  // Privacy Center reads, so both switches share one stored value).
+  const [settingsHydrated, setSettingsHydrated] = useState(false);
+  const securityHelper = securityHelperProp ?? localSecurityHelper;
+  const handleSecurityHelper = (value: boolean) => {
+    if (onSecurityHelperChange) onSecurityHelperChange(value);
+    else setLocalSecurityHelper(value);
+  };
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Read on mount only, so server and client render the same first pass.
@@ -82,7 +98,48 @@ export function SettingsPanel({
     } catch {
       setBrowserTimezone("");
     }
+    try {
+      const stored24h = window.localStorage.getItem("dusrel-mail-time24h");
+      if (stored24h === "true" || stored24h === "false") setTime24h(stored24h === "true");
+      const storedTz = window.localStorage.getItem("dusrel-mail-auto-timezone");
+      if (storedTz === "true" || storedTz === "false") setAutoTimezone(storedTz === "true");
+      if (securityHelperProp === undefined) {
+        const storedHelper = window.localStorage.getItem("dusrel-mail-security-helper");
+        if (storedHelper === "true" || storedHelper === "false") setLocalSecurityHelper(storedHelper === "true");
+      }
+    } catch {
+      // Private mode etc.: settings just don't persist.
+    }
+    setSettingsHydrated(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!settingsHydrated) return;
+    try {
+      window.localStorage.setItem("dusrel-mail-time24h", time24h ? "true" : "false");
+    } catch {
+      // Private mode etc.: the setting just doesn't persist.
+    }
+  }, [time24h, settingsHydrated]);
+
+  useEffect(() => {
+    if (!settingsHydrated) return;
+    try {
+      window.localStorage.setItem("dusrel-mail-auto-timezone", autoTimezone ? "true" : "false");
+    } catch {
+      // Private mode etc.: the setting just doesn't persist.
+    }
+  }, [autoTimezone, settingsHydrated]);
+
+  useEffect(() => {
+    if (!settingsHydrated || securityHelperProp !== undefined) return;
+    try {
+      window.localStorage.setItem("dusrel-mail-security-helper", localSecurityHelper ? "true" : "false");
+    } catch {
+      // Private mode etc.: the setting just doesn't persist.
+    }
+  }, [localSecurityHelper, settingsHydrated, securityHelperProp]);
 
   const linkClass = "text-sm font-medium text-[#4d90fe] hover:underline";
 
@@ -135,8 +192,8 @@ export function SettingsPanel({
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spTitle")}</h2>
         {onClose && (
-          <Button variant="ghost" onClick={onClose}>
-            {t(locale, "spClose")}
+          <Button variant="ghost" onClick={onClose} aria-label={t(locale, "spClose")} title={t(locale, "spClose")}>
+            <span aria-hidden="true" className="text-xl leading-none">×</span>
           </Button>
         )}
       </div>
@@ -149,12 +206,15 @@ export function SettingsPanel({
               type="button"
               onClick={() => setActiveSection(item.id)}
               aria-current={activeSection === item.id ? "true" : undefined}
-              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-left text-[15px] font-medium transition-colors ${
+              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-left text-[15px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 ${
                 activeSection === item.id ? "bg-slate-100 text-slate-900 dark:bg-white/10 dark:text-[#e8eaed]" : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5"
               }`}
             >
               {NAV_ICONS[item.id]}
               {t(locale, item.key)}
+              {/* Sessions pane lists only the current session — honest count. */}
+              {item.id === "sessions" && <span className="ml-auto text-xs text-slate-400">1</span>}
+              {item.id === "autoreply" && <span className="ml-auto text-xs text-slate-400">{autoReply.enabled ? t(locale, "spOn") : t(locale, "spOff")}</span>}
             </button>
           ))}
         </nav>
@@ -162,19 +222,20 @@ export function SettingsPanel({
         <div className="min-w-0 flex-1 space-y-4">
           {activeSection === "account" && (
             <div className="space-y-4">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spAccount")}</h3>
               <Field label={t(locale, "spDisplayName")}>
                 <Input value={displayName} onChange={(e) => onDisplayNameChange(e.target.value)} />
               </Field>
               <Field label={t(locale, "spDefaultEmail")}>
-                <Input value={email} readOnly />
+                <span className="block text-sm text-slate-900 dark:text-[#e8eaed]">{email}</span>
               </Field>
               <Row label={t(locale, "spPassword")}>
                 <span aria-hidden="true" className="text-sm tracking-widest text-slate-900 dark:text-[#e8eaed]">
                   ••••••••
                 </span>
-                <a className={linkClass} href={accountCentreUrl}>
+                <Button variant="secondary" onClick={() => { window.location.href = accountCentreUrl; }}>
                   {t(locale, "spChange")}
-                </a>
+                </Button>
               </Row>
               <Row label={t(locale, "spAppearance")}>
                 <AppearanceCards />
@@ -195,7 +256,7 @@ export function SettingsPanel({
                   <button
                     type="button"
                     onClick={() => setDeleteDialogOpen(true)}
-                    className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-500/40 dark:text-red-400 dark:hover:bg-red-500/10"
+                    className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:border-red-500/40 dark:text-red-400 dark:hover:bg-red-500/10"
                   >
                     {t(locale, "spDelete")}
                   </button>
@@ -204,10 +265,16 @@ export function SettingsPanel({
             </div>
           )}
 
-          {activeSection === "upgrade" && pricingNote}
+          {activeSection === "upgrade" && (
+            <div className="space-y-4">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spUpgrade")}</h3>
+              {pricingNote}
+            </div>
+          )}
 
           {activeSection === "privacy" && (
             <div className="space-y-4">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spPrivacy")}</h3>
               <Row label={t(locale, "spTwoFactor")}>
                 <a className={linkClass} href={accountCentreUrl}>
                   {t(locale, "spManageCentre")}
@@ -219,7 +286,7 @@ export function SettingsPanel({
                 </a>
               </Row>
               <Row label={t(locale, "spSecurityHelper")}>
-                <Switch checked={securityHelper} onChange={setSecurityHelper} label={t(locale, "spSecurityHelper")} />
+                <Switch checked={securityHelper} onChange={handleSecurityHelper} label={t(locale, "spSecurityHelper")} />
               </Row>
               <Row label={t(locale, "spBlocked")}>
                 <span className="text-sm text-slate-600 dark:text-slate-300">{blockedCount}</span>
@@ -232,6 +299,7 @@ export function SettingsPanel({
 
           {activeSection === "sessions" && (
             <div className="space-y-3">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spSessions")}</h3>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span>
                   <span className="block text-sm font-medium text-slate-900 dark:text-[#e8eaed]">{t(locale, "spCurrentSession")}</span>
@@ -253,6 +321,7 @@ export function SettingsPanel({
 
           {activeSection === "aliases" && (
             <div className="space-y-3">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spAliases")}</h3>
               <p className="text-sm text-slate-900 dark:text-[#e8eaed]">
                 {t(locale, "spDefaultIdentity")}: {displayName} / {email}
               </p>
@@ -275,6 +344,7 @@ export function SettingsPanel({
 
           {activeSection === "hide" && (
             <div className="space-y-2">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spHide")}</h3>
               <p className="font-medium text-slate-900 dark:text-[#e8eaed]">{t(locale, "spHideSoon")}</p>
               <p className="text-sm text-slate-600 dark:text-slate-300">{t(locale, "spHideNote")}</p>
             </div>
@@ -282,6 +352,7 @@ export function SettingsPanel({
 
           {activeSection === "autoreply" && (
             <div className="space-y-3">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spAutoReply")}</h3>
               <Row label={t(locale, "spAutoReply")}>
                 <span className="text-sm text-slate-600 dark:text-slate-300">{autoReply.enabled ? t(locale, "spOn") : t(locale, "spOff")}</span>
                 <Switch
@@ -305,6 +376,7 @@ export function SettingsPanel({
 
           {activeSection === "signature" && (
             <div className="space-y-3">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spSignature")}</h3>
               <Field label={t(locale, "spSignature")}>
                 <Textarea rows={4} value={signature} onChange={(e) => onSignatureChange(e.target.value)} />
               </Field>
@@ -312,9 +384,19 @@ export function SettingsPanel({
             </div>
           )}
 
-          {activeSection === "billing" && pricingNote}
+          {activeSection === "billing" && (
+            <div className="space-y-4">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spBilling")}</h3>
+              {pricingNote}
+            </div>
+          )}
 
-          {activeSection === "download" && <div>{downloadSlot ?? <p className="text-sm text-slate-600 dark:text-slate-300">{t(locale, "spDownloadNote")}</p>}</div>}
+          {activeSection === "download" && (
+            <div className="space-y-3">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spDownload")}</h3>
+              <div>{downloadSlot ?? <p className="text-sm text-slate-600 dark:text-slate-300">{t(locale, "spDownloadNote")}</p>}</div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -327,9 +409,14 @@ export function SettingsPanel({
             className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-[#1e1e1e]"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 id="settings-delete-title" className="text-base font-semibold text-slate-900 dark:text-[#e8eaed]">
-              {t(locale, "spDelete")}
-            </h3>
+            <div className="flex items-start justify-between gap-3">
+              <h3 id="settings-delete-title" className="text-base font-semibold text-slate-900 dark:text-[#e8eaed]">
+                {t(locale, "spDelete")}
+              </h3>
+              <Button variant="ghost" onClick={() => setDeleteDialogOpen(false)} aria-label={t(locale, "spClose")} title={t(locale, "spClose")}>
+                <span aria-hidden="true" className="text-xl leading-none">×</span>
+              </Button>
+            </div>
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{t(locale, "spDeleteText")}</p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <a className={linkClass} href={accountCentreUrl}>

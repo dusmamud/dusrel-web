@@ -10,12 +10,31 @@ export interface MailMessage {
   starred: boolean;
   subject: string;
   to: string;
+  cc?: string[];
+  bcc?: string[];
+  encryption?: string;
+  encryptionPassword?: string;
+  attachmentNames?: string[];
+}
+
+// Send payload. The new fields are all optional so existing callers that
+// pass only { body, subject, to } keep working unchanged. MailApp wiring
+// (handleSend/handleSaveDraft) passes the values the compose UI collects.
+export interface MailSendInput {
+  body: string;
+  subject: string;
+  to: string;
+  cc?: string[];
+  bcc?: string[];
+  encryption?: string;
+  encryptionPassword?: string;
+  attachmentNames?: string[];
 }
 
 export interface MailApi {
   list(folder: FolderId): Promise<MailMessage[]>;
   search(query: string): Promise<MailMessage[]>;
-  send(input: { body: string; subject: string; to: string }): Promise<MailMessage>;
+  send(input: MailSendInput): Promise<MailMessage>;
 }
 
 export const MAIL_API_URL =
@@ -68,7 +87,7 @@ export class MockMailApi implements MailApi {
     if (!q) return [];
     return this.messages.filter((m) => `${m.from} ${m.subject} ${m.body}`.toLowerCase().includes(q));
   }
-  async send(input: { body: string; subject: string; to: string }): Promise<MailMessage> {
+  async send(input: MailSendInput): Promise<MailMessage> {
     const message: MailMessage = {
       body: input.body,
       date: new Date().toISOString(),
@@ -79,6 +98,11 @@ export class MockMailApi implements MailApi {
       starred: false,
       subject: input.subject || "(No subject)",
       to: input.to,
+      ...(input.cc && input.cc.length > 0 ? { cc: input.cc } : {}),
+      ...(input.bcc && input.bcc.length > 0 ? { bcc: input.bcc } : {}),
+      ...(input.encryption ? { encryption: input.encryption } : {}),
+      ...(input.encryptionPassword ? { encryptionPassword: input.encryptionPassword } : {}),
+      ...(input.attachmentNames && input.attachmentNames.length > 0 ? { attachmentNames: input.attachmentNames } : {}),
     };
     this.messages = [message, ...this.messages];
     return message;
@@ -114,6 +138,7 @@ export class HttpMailApi implements MailApi {
       starred: e.isFlagged,
       subject: e.subject || "(No subject)",
       to: Array.isArray(e.to) ? e.to.join(", ") : (e.to || ""),
+      ...(e.cc && e.cc.length > 0 ? { cc: e.cc } : {}),
     };
   }
 
@@ -167,7 +192,7 @@ export class HttpMailApi implements MailApi {
     }
   }
 
-  async send(input: { body: string; subject: string; to: string }): Promise<MailMessage> {
+  async send(input: MailSendInput): Promise<MailMessage> {
     const token = getToken();
     if (!token) {
       return this.mockFallback.send(input);
@@ -177,12 +202,20 @@ export class HttpMailApi implements MailApi {
         .split(/[,;]/)
         .map((s) => s.trim())
         .filter(Boolean);
+      // Optional fields ride only when set, so the backend sees the same
+      // minimal body as before for plain sends.
+      const body: Record<string, unknown> = {
+        bodyText: input.body,
+        subject: input.subject || "(No subject)",
+        to: toAddresses.length > 0 ? toAddresses : [input.to.trim()],
+      };
+      if (input.cc && input.cc.length > 0) body.cc = input.cc;
+      if (input.bcc && input.bcc.length > 0) body.bcc = input.bcc;
+      if (input.encryption) body.encryption = input.encryption;
+      if (input.encryptionPassword) body.encryptionPassword = input.encryptionPassword;
+      if (input.attachmentNames && input.attachmentNames.length > 0) body.attachmentNames = input.attachmentNames;
       const res = await fetch(`${MAIL_API_URL}/mail/send`, {
-        body: JSON.stringify({
-          bodyText: input.body,
-          subject: input.subject || "(No subject)",
-          to: toAddresses.length > 0 ? toAddresses : [input.to.trim()],
-        }),
+        body: JSON.stringify(body),
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",

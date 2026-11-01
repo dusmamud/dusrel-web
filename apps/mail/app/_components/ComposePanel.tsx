@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { Button, Input } from "@dusrel/ui";
 import { t, type Locale } from "@dusrel/locales";
@@ -23,14 +23,18 @@ export interface ComposePanelProps {
   displayName: string;
   signature: string;
   initialTo?: string;
+  initialCc?: string;
+  initialBcc?: string;
   initialSubject?: string;
   initialBody?: string;
   initialEncryption?: ComposeEncryption;
+  initialAttachmentNames?: string[];
   docked?: boolean;
   onSend: (payload: ComposePayload) => void;
   onSaveDraft: (payload: ComposePayload) => void;
   onDeleteDraft: () => void;
   onClose: () => void;
+  onDraftChange?: (payload: ComposePayload) => void;
 }
 
 function splitAddresses(value: string): string[] {
@@ -50,26 +54,34 @@ export function ComposePanel({
   displayName,
   signature,
   initialTo = "",
+  initialCc = "",
+  initialBcc = "",
   initialSubject = "",
   initialBody = "",
   initialEncryption = "standard",
+  initialAttachmentNames = [],
   docked = false,
   onSend,
   onSaveDraft,
   onDeleteDraft,
   onClose,
+  onDraftChange,
 }: ComposePanelProps) {
   const [to, setTo] = useState(initialTo);
-  const [cc, setCc] = useState("");
-  const [bcc, setBcc] = useState("");
-  const [showCc, setShowCc] = useState(false);
-  const [showBcc, setShowBcc] = useState(false);
+  const [cc, setCc] = useState(initialCc);
+  const [bcc, setBcc] = useState(initialBcc);
+  const [showCc, setShowCc] = useState(initialCc.length > 0);
+  const [showBcc, setShowBcc] = useState(initialBcc.length > 0);
   const [showFormatting, setShowFormatting] = useState(false);
   const [subject, setSubject] = useState(initialSubject);
   const [body, setBody] = useState(initialBody);
   const [encryption, setEncryption] = useState<ComposeEncryption>(initialEncryption);
   const [encryptionPassword, setEncryptionPassword] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  // Attachment names restored from a saved draft. Real File objects cannot
+  // be rebuilt from names, so restored names are kept separately, shown in
+  // the same list, and merged into the payload on send/save.
+  const [restoredNames, setRestoredNames] = useState<string[]>(initialAttachmentNames);
   const [collapsed, setCollapsed] = useState(false);
   const [fullScreen, setFullScreen] = useState(false);
 
@@ -84,8 +96,14 @@ export function ComposePanel({
     body,
     encryption,
     ...(encryption === "password" ? { encryptionPassword } : {}),
-    attachmentNames: files.map((file) => file.name),
+    attachmentNames: [...files.map((file) => file.name), ...restoredNames],
   });
+
+  // Draft-change reporting (contract with the shell): notify the parent
+  // whenever any draft field changes, including on mount (initial state).
+  useEffect(() => {
+    onDraftChange?.(payload());
+  }, [to, cc, bcc, subject, body, encryption, encryptionPassword, files, restoredNames, onDraftChange]);
 
   const sendDisabled = to.trim().length === 0;
 
@@ -147,12 +165,12 @@ export function ComposePanel({
 
   const panelClass = fullScreen
     ? "fixed inset-0 z-50 flex flex-col rounded-none border border-slate-200 bg-white text-slate-900 dark:border-white/10 dark:bg-[#1e1e1e] dark:text-[#e8eaed]"
-    : `relative flex flex-col ${docked ? "rounded-t-xl" : "rounded-xl"} border border-slate-200 bg-white text-slate-900 shadow-lg dark:border-white/10 dark:bg-[#1e1e1e] dark:text-[#e8eaed]`;
+    : `relative flex flex-col ${docked ? "rounded-t-xl" : "mx-auto w-full max-w-[640px] rounded-xl"} border border-slate-200 bg-white text-slate-900 shadow-lg dark:border-white/10 dark:bg-[#1e1e1e] dark:text-[#e8eaed]`;
 
   // Minimized bar: only the subject plus the expand button, per spec.
   if (collapsed) {
     return (
-      <div className={fullScreen ? "fixed inset-x-0 top-0 z-50 flex items-center justify-between gap-3 border border-slate-200 bg-white px-4 py-3 text-slate-900 dark:border-white/10 dark:bg-[#1e1e1e] dark:text-[#e8eaed]" : "flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-lg dark:border-white/10 dark:bg-[#1e1e1e] dark:text-[#e8eaed]"}>
+      <div className={fullScreen ? "fixed inset-x-0 top-0 z-50 flex items-center justify-between gap-3 border border-slate-200 bg-white px-4 py-3 text-slate-900 dark:border-white/10 dark:bg-[#1e1e1e] dark:text-[#e8eaed]" : `flex items-center justify-between gap-3 ${docked ? "rounded-t-xl" : "rounded-xl"} border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-lg dark:border-white/10 dark:bg-[#1e1e1e] dark:text-[#e8eaed]`}>
         <span className="truncate text-sm font-medium">{subject.trim().length > 0 ? subject : t(locale, "composePanelNoSubject")}</span>
         <Button variant="ghost" onClick={() => setCollapsed(false)} aria-label={t(locale, "composePanelExpand")}>
           {t(locale, "composePanelExpand")}
@@ -171,21 +189,31 @@ export function ComposePanel({
           <span className="truncate text-sm font-medium">{displayName}</span>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <Button variant="ghost" onClick={() => setCollapsed(true)} aria-label={t(locale, "composePanelCollapse")}>
-            {t(locale, "composePanelCollapse")}
-          </Button>
-          <Button variant="ghost" onClick={() => setFullScreen((prev) => !prev)} aria-label={fullScreen ? t(locale, "composePanelExitFullScreen") : t(locale, "composePanelFullScreen")}>
-            {fullScreen ? t(locale, "composePanelExitFullScreen") : t(locale, "composePanelFullScreen")}
-          </Button>
+          <button type="button" onClick={() => setCollapsed(true)} aria-label={t(locale, "composePanelCollapse")} title={t(locale, "composePanelCollapse")} className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-slate-300 dark:hover:bg-white/5">
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+          <button type="button" onClick={() => setFullScreen((prev) => !prev)} aria-label={fullScreen ? t(locale, "composePanelExitFullScreen") : t(locale, "composePanelFullScreen")} title={fullScreen ? t(locale, "composePanelExitFullScreen") : t(locale, "composePanelFullScreen")} className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-slate-300 dark:hover:bg-white/5">
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+              <polyline points="15 3 21 3 21 9" />
+              <polyline points="9 21 3 21 3 15" />
+              <line x1="21" y1="3" x2="14" y2="10" />
+              <line x1="3" y1="21" x2="10" y2="14" />
+            </svg>
+          </button>
           {/* Closing discards an unsent, unsaved draft: this panel never
               auto-saves into Drafts, and neither should the parent on close. */}
-          <Button variant="ghost" onClick={onClose} aria-label={t(locale, "composePanelClose")} title={t(locale, "composePanelCloseDiscard")}>
-            {t(locale, "composePanelClose")}
-          </Button>
+          <button type="button" onClick={onClose} aria-label={t(locale, "composePanelClose")} title={t(locale, "composePanelCloseDiscard")} className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-slate-300 dark:hover:bg-white/5">
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-4">
+      <div className={`flex min-h-0 flex-1 flex-col gap-4 ${fullScreen ? "overflow-y-auto" : ""} px-4 py-4`}>
         <div className="flex flex-col gap-3">
           <div className="flex items-start gap-2">
             <div className="flex-1">
@@ -233,6 +261,7 @@ export function ComposePanel({
             rows={10}
             value={body}
             onChange={(e) => setBody(e.target.value)}
+            placeholder={t(locale, "composePanelBodyPlaceholder")}
             aria-label={t(locale, "composePanelBody")}
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#4d90fe] focus:ring-2 focus:ring-[#4d90fe]/30 dark:border-white/20 dark:bg-[#1e1e1e] dark:text-[#e8eaed]"
           />
@@ -240,7 +269,7 @@ export function ComposePanel({
         </div>
 
         <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFiles} aria-label={t(locale, "composePanelChooseFiles")} />
-        {files.length > 0 ? (
+        {files.length + restoredNames.length > 0 ? (
           <div>
             <p className="mb-1 text-sm font-medium text-slate-700 dark:text-slate-300">{t(locale, "composePanelAttachments")}</p>
             <ul className="flex flex-col gap-1">
@@ -248,6 +277,14 @@ export function ComposePanel({
                 <li key={`${file.name}-${index}`} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-white/10">
                   <span className="min-w-0 truncate">{file.name}</span>
                   <Button variant="ghost" onClick={() => setFiles((prev) => prev.filter((_, i) => i !== index))} aria-label={t(locale, "composePanelRemoveFile")}>
+                    {t(locale, "composePanelRemoveFile")}
+                  </Button>
+                </li>
+              ))}
+              {restoredNames.map((name, index) => (
+                <li key={`restored-${name}-${index}`} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-white/10">
+                  <span className="min-w-0 truncate">{name}</span>
+                  <Button variant="ghost" onClick={() => setRestoredNames((prev) => prev.filter((_, i) => i !== index))} aria-label={t(locale, "composePanelRemoveFile")}>
                     {t(locale, "composePanelRemoveFile")}
                   </Button>
                 </li>
@@ -260,7 +297,7 @@ export function ComposePanel({
           <div className="flex flex-wrap items-center gap-2">
             {/* Plain button, not @dusrel/ui Button: ui Button spreads props after
                 its own className, so a custom colour className would drop its base styles. */}
-            <button type="button" disabled={sendDisabled} onClick={() => onSend(payload())} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">
+            <button type="button" disabled={sendDisabled} onClick={() => onSend(payload())} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">
               {t(locale, "composePanelSend")}
             </button>
             <Button variant="secondary" onClick={() => onSaveDraft(payload())}>
@@ -283,25 +320,25 @@ export function ComposePanel({
             <span className="flex-1" aria-hidden="true" />
             {/* Dusrel has no AI features: this icon is disabled and labelled
                 as coming soon, and must never imply it works. */}
-            <button type="button" disabled aria-label="AI assistant (coming soon)" title="AI assistant (coming soon)" className="rounded-lg p-2 text-slate-400 opacity-50 dark:text-slate-500">
+            <button type="button" disabled aria-label="AI assistant (coming soon)" title="AI assistant (coming soon)" className="rounded-lg p-2 text-slate-400 opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-slate-500">
               <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
                 <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z" />
               </svg>
             </button>
-            <button type="button" onClick={insertSignature} aria-label={t(locale, "composePanelInsertSignature")} title={t(locale, "composePanelInsertSignature")} className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5">
+            <button type="button" onClick={insertSignature} aria-label={t(locale, "composePanelInsertSignature")} title={t(locale, "composePanelInsertSignature")} className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-slate-300 dark:hover:bg-white/5">
               <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
                 <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
               </svg>
             </button>
-            <button type="button" onClick={() => fileRef.current?.click()} aria-label={t(locale, "composePanelAttachFiles")} title={t(locale, "composePanelAttachFiles")} className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5">
+            <button type="button" onClick={() => fileRef.current?.click()} aria-label={t(locale, "composePanelAttachFiles")} title={t(locale, "composePanelAttachFiles")} className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-slate-300 dark:hover:bg-white/5">
               <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
               </svg>
             </button>
-            <button type="button" onClick={() => setShowFormatting((prev) => !prev)} aria-pressed={showFormatting} aria-label="Aa" title="Aa" className="rounded-lg px-2 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5">
+            <button type="button" onClick={() => setShowFormatting((prev) => !prev)} aria-pressed={showFormatting} aria-label="Aa" title="Aa" className="rounded-lg px-2 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-slate-300 dark:hover:bg-white/5">
               Aa
             </button>
-            <button type="button" onClick={onDeleteDraft} aria-label={t(locale, "composePanelDeleteDraft")} title={t(locale, "composePanelDeleteDraft")} className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5">
+            <button type="button" onClick={onDeleteDraft} aria-label={t(locale, "composePanelDeleteDraft")} title={t(locale, "composePanelDeleteDraft")} className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-slate-300 dark:hover:bg-white/5">
               <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
                 <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
               </svg>

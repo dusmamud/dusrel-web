@@ -21,14 +21,21 @@ export type MailView = "folder" | "compose" | "settings" | "search";
 type CustomFolder = { id: string; name: string };
 type ComposeInitial = {
   to: string;
+  cc?: string;
+  bcc?: string;
   subject: string;
   body: string;
   encryption?: ComposeEncryption;
+  attachmentNames?: string[];
 };
 
 const CUSTOM_FOLDERS_KEY = "dusrel-mail-custom-folders";
 const ALIASES_KEY = "dusrel-mail-aliases";
 const ACTIVE_CUSTOM_KEY = "dusrel-mail-active-custom";
+const COMPOSE_DRAFT_KEY = "dusrel-mail-compose-draft";
+const DISPLAY_NAME_KEY = "dusrel-mail-display-name";
+const SIGNATURE_KEY = "dusrel-mail-signature";
+const AUTO_REPLY_KEY = "dusrel-mail-auto-reply";
 
 function readStored<T>(key: string, fallback: T): T {
   try {
@@ -79,6 +86,31 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
     }
     setCustomFolders(readStored<CustomFolder[]>(CUSTOM_FOLDERS_KEY, []));
     setAliases(readStored<string[]>(ALIASES_KEY, []));
+    // Settings the user changed before persist in localStorage and win
+    // over the stored-user defaults above.
+    try {
+      const savedName = window.localStorage.getItem(DISPLAY_NAME_KEY);
+      if (savedName) setDisplayName(savedName);
+    } catch {
+      // Private mode: the default stays.
+    }
+    try {
+      const savedSignature = window.localStorage.getItem(SIGNATURE_KEY);
+      if (savedSignature) setSignature(savedSignature);
+    } catch {
+      // Private mode: the default stays.
+    }
+    try {
+      const rawReply = window.localStorage.getItem(AUTO_REPLY_KEY);
+      if (rawReply) {
+        const parsed = JSON.parse(rawReply) as Partial<AutoReplyValue>;
+        if (parsed && typeof parsed.enabled === "boolean" && typeof parsed.message === "string") {
+          setAutoReply({ enabled: parsed.enabled, message: parsed.message });
+        }
+      }
+    } catch {
+      // Corrupt value: the default stays.
+    }
     try {
       const pending = window.sessionStorage.getItem(ACTIVE_CUSTOM_KEY);
       if (pending) {
@@ -87,6 +119,44 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
       }
     } catch {
       // sessionStorage unavailable: ignore.
+    }
+    // Restore an overlay compose draft after a folder navigation remounts
+    // the app (the reference panel persists across folders; this app
+    // remounts MailApp per route, so the draft survives in sessionStorage).
+    // Only folder/search views restore, never compose or settings, and
+    // only on mount — never during render, so static export stays safe.
+    if (view === "folder" || view === "search") {
+      try {
+        const raw = window.sessionStorage.getItem(COMPOSE_DRAFT_KEY);
+        if (raw) {
+          const stored = JSON.parse(raw) as {
+            open?: boolean;
+            to?: unknown;
+            cc?: unknown;
+            bcc?: unknown;
+            subject?: string;
+            body?: string;
+            encryption?: string;
+            attachmentNames?: unknown;
+          };
+          if (stored.open) {
+            const to = Array.isArray(stored.to) ? stored.to.join(", ") : "";
+            const cc = Array.isArray(stored.cc) ? stored.cc.join(", ") : "";
+            const bcc = Array.isArray(stored.bcc) ? stored.bcc.join(", ") : "";
+            const attachmentNames = Array.isArray(stored.attachmentNames)
+              ? stored.attachmentNames.filter((n): n is string => typeof n === "string")
+              : [];
+            const encryption = ["password", "file", "dusrel", "standard"].includes(stored.encryption ?? "")
+              ? (stored.encryption as ComposeEncryption)
+              : undefined;
+            setComposeInitial({ to, cc, bcc, subject: stored.subject ?? "", body: stored.body ?? "", encryption, attachmentNames });
+            setComposeKey((k) => k + 1);
+            setComposeOpen(true);
+          }
+        }
+      } catch {
+        // Corrupt draft: ignore, the list still works.
+      }
     }
     if (view === "search") {
       const q = new URLSearchParams(window.location.search).get("q");
@@ -113,6 +183,70 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
       // Private mode etc.: local-only aliases just don't persist.
     }
   }, [aliases, hydrated]);
+
+  // Settings owned by MailApp persist in localStorage. (time24h,
+  // autoTimezone and the local Security Helper live in SettingsPanel's own
+  // state and persist there, to the same contract keys the Privacy Center
+  // reads — no second source of truth.)
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      window.localStorage.setItem(DISPLAY_NAME_KEY, displayName);
+    } catch {
+      // Private mode etc.: the name just doesn't persist.
+    }
+  }, [displayName, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      window.localStorage.setItem(SIGNATURE_KEY, signature);
+    } catch {
+      // Private mode etc.: the signature just doesn't persist.
+    }
+  }, [signature, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      window.localStorage.setItem(AUTO_REPLY_KEY, JSON.stringify(autoReply));
+    } catch {
+      // Private mode etc.: auto-reply just doesn't persist.
+    }
+  }, [autoReply, hydrated]);
+
+  // Escape closes the topmost layer first: alias dialog, then the
+  // settings modal, then the mobile drawer. (The avatar menu handles
+  // its own Escape inside MailboxTopBar.)
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (aliasDialog) {
+        setAliasDialog(false);
+        setAliasName("");
+        return;
+      }
+      if (view === "settings") {
+        router.push(localePath(locale, "/inbox"));
+        return;
+      }
+      if (sidebarOpen) setSidebarOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [aliasDialog, locale, router, sidebarOpen, view]);
+
+  // If the drawer is open and the viewport grows to desktop (where the
+  // drawer is hidden), close it so the inert main wrapper never traps
+  // desktop interaction.
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const onChange = () => {
+      if (mq.matches) setSidebarOpen(false);
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   useEffect(() => {
     mailApi.list(folder).then((list) => {
@@ -181,12 +315,54 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
     update(id, { read: true });
     setSelectedId(id);
   };
+  const toggleRead = (id: string) => {
+    const found = messages.find((m) => m.id === id) ?? results.find((m) => m.id === id);
+    if (found) update(id, { read: !found.read });
+  };
 
   const openCompose = (initial: ComposeInitial) => {
     setComposeInitial(initial);
     setComposeKey((k) => k + 1);
     setComposeOpen(true);
     setPrivacyOpen(false);
+  };
+
+  const clearComposeDraft = () => {
+    try {
+      window.sessionStorage.removeItem(COMPOSE_DRAFT_KEY);
+    } catch {
+      // sessionStorage unavailable: nothing to clear.
+    }
+  };
+
+  // The overlay panel reports every field change; the draft (plus
+  // open=true) survives folder navigation via sessionStorage and is
+  // restored by the mount effect above. An empty panel writes nothing, so
+  // merely opening compose and switching folders never restores a blank
+  // panel; clearing every field deletes the stored draft.
+  const handleDraftChange = (payload: ComposePayload) => {
+    const hasContent =
+      payload.to.length > 0 ||
+      payload.cc.length > 0 ||
+      payload.bcc.length > 0 ||
+      payload.subject.trim().length > 0 ||
+      payload.body.trim().length > 0 ||
+      payload.attachmentNames.length > 0 ||
+      (payload.encryptionPassword?.length ?? 0) > 0;
+    try {
+      if (hasContent) {
+        window.sessionStorage.setItem(COMPOSE_DRAFT_KEY, JSON.stringify({ ...payload, open: true }));
+      } else {
+        window.sessionStorage.removeItem(COMPOSE_DRAFT_KEY);
+      }
+    } catch {
+      // Private mode etc.: the draft just doesn't persist.
+    }
+  };
+
+  const closeOverlayCompose = () => {
+    setComposeOpen(false);
+    clearComposeDraft();
   };
 
   const reply = () => {
@@ -202,14 +378,19 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
     openCompose({ to: "", subject, body: selected.body });
   };
 
-  // NOTE: api-client send() accepts only to/subject/body today, so Cc, Bcc,
-  // the encryption choice and attachment names are collected by the compose
-  // UI but do not travel with the sent message yet. Wiring them needs a
-  // send() signature change in @dusrel/api-client (a later step, not silent
-  // behaviour change here).
   const handleSend = async (payload: ComposePayload) => {
-    await mailApi.send({ body: payload.body, subject: payload.subject, to: payload.to.join(", ") });
+    await mailApi.send({
+      body: payload.body,
+      subject: payload.subject,
+      to: payload.to.join(", "),
+      ...(payload.cc.length > 0 ? { cc: payload.cc } : {}),
+      ...(payload.bcc.length > 0 ? { bcc: payload.bcc } : {}),
+      encryption: payload.encryption,
+      ...(payload.encryptionPassword ? { encryptionPassword: payload.encryptionPassword } : {}),
+      ...(payload.attachmentNames.length > 0 ? { attachmentNames: payload.attachmentNames } : {}),
+    });
     setComposeOpen(false);
+    clearComposeDraft();
     router.push(localePath(locale, "/sent"));
   };
 
@@ -224,8 +405,14 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
       starred: false,
       subject: payload.subject || "(No subject)",
       to: payload.to.join(", "),
+      ...(payload.cc.length > 0 ? { cc: payload.cc } : {}),
+      ...(payload.bcc.length > 0 ? { bcc: payload.bcc } : {}),
+      encryption: payload.encryption,
+      ...(payload.encryptionPassword ? { encryptionPassword: payload.encryptionPassword } : {}),
+      ...(payload.attachmentNames.length > 0 ? { attachmentNames: payload.attachmentNames } : {}),
     };
     setMessages((prev) => [draft, ...prev]);
+    clearComposeDraft();
     if (view === "compose") {
       router.push(localePath(locale, "/drafts"));
     } else {
@@ -289,6 +476,7 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
   };
 
   const topSearchValue = view === "search" ? query : topQuery;
+  const settingsOpen = view === "settings";
   const topSearchSubmit = () => {
     if (view === "search") return;
     router.push(`${localePath(locale, "/search")}?q=${encodeURIComponent(topQuery)}`);
@@ -324,7 +512,7 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
   // One sidebar definition for desktop and the mobile drawer: folders by
   // default, the Privacy Center as a sidebar mode when it is open.
   const sidebarContent = privacyOpen ? (
-    <div className="h-full w-64 shrink-0 border-r border-slate-200 bg-white dark:border-white/10 dark:bg-[#121212]">
+    <aside aria-label={t(locale, "shellPrivacyCenter")} className="h-full w-64 shrink-0 border-r border-slate-200 bg-white dark:border-white/10 dark:bg-[#121212]">
       <PrivacyCenter
         variant="sidebar"
         locale={locale}
@@ -336,7 +524,7 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
         onCreateAlias={() => setAliasDialog(true)}
         onSelectEncryption={(enc) => openCompose({ to: "", subject: "", body: "", encryption: enc })}
       />
-    </div>
+    </aside>
   ) : (
     <MailboxSidebar
       locale={locale}
@@ -357,17 +545,17 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
   return (
     <div className="min-h-screen bg-white text-slate-900 dark:bg-[#121212] dark:text-[#e8eaed]">
       <div className="flex flex-col lg:flex-row">
-        <div className="hidden shrink-0 lg:block">
-          <MailboxRail locale={locale} activeItem="mail" />
+        <div className="hidden shrink-0 lg:block" inert={settingsOpen ? true : undefined}>
+          <MailboxRail locale={locale} activeItem="mail" onMail={() => router.push(localePath(locale, "/inbox"))} />
         </div>
-        <div className="hidden shrink-0 lg:block">{sidebarContent}</div>
+        <div className="hidden shrink-0 lg:block" inert={settingsOpen ? true : undefined}>{sidebarContent}</div>
         {sidebarOpen ? (
           <div className="fixed inset-0 z-50 lg:hidden">
             <button type="button" aria-label={t(locale, "shellCancel")} onClick={() => setSidebarOpen(false)} className="absolute inset-0 cursor-default bg-slate-900/40" />
             <div className="absolute inset-y-0 left-0 w-64 overflow-y-auto bg-white shadow-xl dark:bg-[#121212]">{sidebarContent}</div>
           </div>
         ) : null}
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1" inert={sidebarOpen ? true : undefined} aria-hidden={sidebarOpen ? true : undefined}>
           <MailboxTopBar
             locale={locale}
             value={topSearchValue}
@@ -381,11 +569,13 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
             onAddAccount={() => router.push(localePath(locale, "/login"))}
             onOpenSettings={() => {
               setPrivacyOpen(false);
+              setSidebarOpen(false);
               router.push(localePath(locale, "/settings"));
             }}
             onLogout={handleLogout}
             counterpartHref={counterpartPath(locale, currentPath)}
             onMenu={() => setSidebarOpen(true)}
+            inert={settingsOpen}
           />
           <div className="border-b border-slate-100 bg-blue-50 px-4 py-2 text-center text-xs text-blue-900 dark:border-white/10 dark:bg-blue-950 dark:text-blue-200">
             {t(locale, "demoNote")}
@@ -399,12 +589,18 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
                 signature={signature}
                 onSend={handleSend}
                 onSaveDraft={handleSaveDraft}
-                onDeleteDraft={() => router.push(localePath(locale, "/inbox"))}
-                onClose={() => router.push(localePath(locale, "/inbox"))}
+                onDeleteDraft={() => {
+                  clearComposeDraft();
+                  router.push(localePath(locale, "/inbox"));
+                }}
+                onClose={() => {
+                  clearComposeDraft();
+                  router.push(localePath(locale, "/inbox"));
+                }}
               />
             ) : view === "settings" ? (
               <div className="relative">
-                <div className="pointer-events-none select-none opacity-40" aria-hidden="true">
+                <div className="pointer-events-none select-none opacity-40" aria-hidden="true" inert>
                   <MessageList
                     locale={locale}
                     messages={folderMessages}
@@ -418,6 +614,9 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
                   />
                 </div>
                 <div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label={t(locale, "spTitle")}
                   className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-slate-900/40 p-2 sm:items-center sm:p-4"
                   onClick={(e) => {
                     if (e.target === e.currentTarget) router.push(localePath(locale, "/inbox"));
@@ -453,6 +652,9 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
                   onSelect={selectMessage}
                   onToggleStar={(id) => update(id, { starred: !messages.find((m) => m.id === id)?.starred })}
                   onMarkAllRead={() => searchMessages.forEach((m) => update(m.id, { read: true }))}
+                  onMoveToTrash={(id) => move(id, "trash")}
+                  onMoveToJunk={(id) => move(id, "spam")}
+                  onToggleRead={toggleRead}
                   onGoInbox={() => router.push(localePath(locale, "/inbox"))}
                   onNewSearch={() => setQuery("")}
                   query={query}
@@ -483,6 +685,9 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
                   onSelect={selectMessage}
                   onToggleStar={(id) => update(id, { starred: !messages.find((m) => m.id === id)?.starred })}
                   onMarkAllRead={() => folderMessages.forEach((m) => update(m.id, { read: true }))}
+                  onMoveToTrash={(id) => move(id, "trash")}
+                  onMoveToJunk={(id) => move(id, "spam")}
+                  onToggleRead={toggleRead}
                   illustration={folderArt}
                 />
               )
@@ -493,8 +698,8 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
 
       {composeOpen && view !== "compose" ? (
         <>
-          <div className="pointer-events-none fixed inset-0 z-30 bg-slate-900/30" aria-hidden="true" />
-          <div className="fixed inset-x-0 bottom-0 z-40 sm:inset-x-auto sm:right-4 sm:w-[640px] sm:max-w-[calc(100vw-2rem)]">
+          <div className="fixed inset-0 z-30 bg-slate-900/30" aria-hidden="true" />
+          <div className="fixed inset-x-0 bottom-0 z-40 sm:inset-x-auto sm:right-4 sm:w-[640px] sm:max-w-[calc(100vw-2rem)]" inert={sidebarOpen ? true : undefined}>
           <div className="max-h-[90vh] overflow-y-auto">
             <ComposePanel
               key={composeKey}
@@ -503,13 +708,17 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
               displayName={displayName}
               signature={signature}
               initialTo={composeInitial.to}
+              initialCc={composeInitial.cc}
+              initialBcc={composeInitial.bcc}
               initialSubject={composeInitial.subject}
               initialBody={composeInitial.body}
               initialEncryption={composeInitial.encryption}
+              initialAttachmentNames={composeInitial.attachmentNames}
               onSend={handleSend}
               onSaveDraft={handleSaveDraft}
-              onDeleteDraft={() => setComposeOpen(false)}
-              onClose={() => setComposeOpen(false)}
+              onDeleteDraft={closeOverlayCompose}
+              onClose={closeOverlayCompose}
+              onDraftChange={handleDraftChange}
             />
           </div>
         </div>

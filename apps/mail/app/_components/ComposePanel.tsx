@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
-import { Button, Input } from "@dusrel/ui";
+import { Button } from "@dusrel/ui";
 import { t, type Locale } from "@dusrel/locales";
 
 export type ComposeEncryption = "password" | "file" | "dusrel" | "standard";
@@ -167,6 +167,16 @@ export function ComposePanel({
     ? "fixed inset-0 z-50 flex flex-col rounded-none border border-slate-200 bg-white text-slate-900 dark:border-white/10 dark:bg-[#1e1e1e] dark:text-[#e8eaed]"
     : `relative flex flex-col ${docked ? "rounded-t-xl" : "mx-auto w-full max-w-[640px] rounded-xl"} border border-slate-200 bg-white text-slate-900 shadow-lg dark:border-white/10 dark:bg-[#1e1e1e] dark:text-[#e8eaed]`;
 
+  // Borderless fields with a hairline underneath, like the reference panel:
+  // no boxes, just a bottom divider that turns brand blue on focus. Native
+  // inputs (not @dusrel/ui Input) because ui Input carries its own boxed
+  // classes that cannot be removed through its className prop.
+  const fieldClass =
+    "w-full border-0 border-b border-slate-200 bg-transparent px-1 py-2.5 text-base text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#4d90fe] dark:border-white/10 dark:text-[#e8eaed]";
+  // Same, for the recipient input whose row already carries the hairline.
+  const rowInputClass =
+    "w-full border-0 bg-transparent px-1 py-2.5 text-base text-slate-900 outline-none placeholder:text-slate-400 dark:text-[#e8eaed]";
+
   // Minimized bar: only the subject plus the expand button, per spec.
   if (collapsed) {
     return (
@@ -181,12 +191,12 @@ export function ComposePanel({
 
   return (
     <section className={panelClass} aria-label={t(locale, "composePanelTitle")}>
-      <header className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-white/10">
+      <header className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-2.5 dark:border-white/10">
         <div className="flex min-w-0 items-center gap-3">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#4d90fe] via-purple-400 to-pink-400 text-sm font-semibold text-white" aria-hidden="true">
             D
           </span>
-          <span className="truncate text-sm font-medium">{displayName}</span>
+          <span className="truncate text-base font-medium">{displayName}</span>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <button type="button" onClick={() => setCollapsed(true)} aria-label={t(locale, "composePanelCollapse")} title={t(locale, "composePanelCollapse")} className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-slate-300 dark:hover:bg-white/5">
@@ -214,15 +224,16 @@ export function ComposePanel({
       </header>
 
       <div className={`flex min-h-0 flex-1 flex-col gap-4 ${fullScreen ? "overflow-y-auto" : ""} px-4 py-4`}>
-        <div className="flex flex-col gap-3">
-          <div className="flex items-start gap-2">
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2 border-b border-slate-200 focus-within:border-[#4d90fe] dark:border-white/10">
             <div className="flex-1">
-              <Input value={to} onChange={(e) => setTo(e.target.value)} placeholder={t(locale, "composePanelToPlaceholder")} aria-label={t(locale, "composePanelTo")} autoComplete="off" />
+              <input value={to} onChange={(e) => setTo(e.target.value)} placeholder={t(locale, "composePanelToPlaceholder")} aria-label={t(locale, "composePanelTo")} autoComplete="off" className={rowInputClass} />
             </div>
-            <div className="flex shrink-0 gap-1">
+            <div className="flex shrink-0 items-center gap-1">
               <Button variant="ghost" onClick={() => setShowCc((prev) => !prev)} aria-pressed={showCc}>
                 {t(locale, "composePanelCc")}
               </Button>
+              <span aria-hidden="true" className="text-sm text-slate-400">·</span>
               <Button variant="ghost" onClick={() => setShowBcc((prev) => !prev)} aria-pressed={showBcc}>
                 {t(locale, "composePanelBcc")}
               </Button>
@@ -230,13 +241,13 @@ export function ComposePanel({
           </div>
 
           {showCc ? (
-            <Input value={cc} onChange={(e) => setCc(e.target.value)} placeholder={t(locale, "composePanelToPlaceholder")} aria-label={t(locale, "composePanelCc")} autoComplete="off" />
+            <input value={cc} onChange={(e) => setCc(e.target.value)} placeholder={t(locale, "composePanelToPlaceholder")} aria-label={t(locale, "composePanelCc")} autoComplete="off" className={fieldClass} />
           ) : null}
           {showBcc ? (
-            <Input value={bcc} onChange={(e) => setBcc(e.target.value)} placeholder={t(locale, "composePanelToPlaceholder")} aria-label={t(locale, "composePanelBcc")} autoComplete="off" />
+            <input value={bcc} onChange={(e) => setBcc(e.target.value)} placeholder={t(locale, "composePanelToPlaceholder")} aria-label={t(locale, "composePanelBcc")} autoComplete="off" className={fieldClass} />
           ) : null}
 
-          <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={t(locale, "composePanelSubjectPlaceholder")} aria-label={t(locale, "composePanelSubject")} />
+          <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={t(locale, "composePanelSubjectPlaceholder")} aria-label={t(locale, "composePanelSubject")} className={fieldClass} />
         </div>
 
         <div className="flex flex-col gap-2">
@@ -255,17 +266,18 @@ export function ComposePanel({
           ) : null}
           {/* Native textarea (not @dusrel/ui Textarea): the formatting toolbar
               needs a ref for cursor/selection restore, and ui Textarea does
-              not forward one. Classes match ui Textarea exactly. */}
+              not forward one. Borderless like the reference body area; the
+              focus ring appears only for keyboard focus. */}
           <textarea
             ref={bodyRef}
-            rows={10}
+            rows={9}
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder={t(locale, "composePanelBodyPlaceholder")}
             aria-label={t(locale, "composePanelBody")}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#4d90fe] focus:ring-2 focus:ring-[#4d90fe]/30 dark:border-white/20 dark:bg-[#1e1e1e] dark:text-[#e8eaed]"
+            className="w-full resize-none border-0 bg-transparent px-1 py-3 text-base text-slate-900 outline-none placeholder:text-slate-400 focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-[#4d90fe]/30 dark:text-[#e8eaed]"
           />
-          <p className="text-xs text-slate-500 dark:text-slate-400">{t(locale, "composePanelSentFrom")}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t(locale, "composePanelSentFrom")}</p>
         </div>
 
         <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFiles} aria-label={t(locale, "composePanelChooseFiles")} />
@@ -293,20 +305,23 @@ export function ComposePanel({
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-3 border-t border-slate-200 pt-4 dark:border-white/10">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col gap-3 pt-4">
+          <div className="flex flex-wrap items-center gap-1.5">
             {/* Plain button, not @dusrel/ui Button: ui Button spreads props after
                 its own className, so a custom colour className would drop its base styles. */}
-            <button type="button" disabled={sendDisabled} onClick={() => onSend(payload())} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">
+            <button type="button" disabled={sendDisabled} onClick={() => onSend(payload())} className="rounded-lg bg-slate-900 px-5 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">
               {t(locale, "composePanelSend")}
             </button>
             <Button variant="secondary" onClick={() => onSaveDraft(payload())}>
               {t(locale, "composePanelSaveDraft")}
             </Button>
-            <label className="flex items-center gap-2">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{t(locale, "composePanelEncryption")}</span>
+            <label className="relative flex items-center">
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="pointer-events-none absolute left-3 shrink-0 text-slate-400">
+                <rect x="3" y="11" width="18" height="11" rx="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
               <select
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#4d90fe] focus:ring-2 focus:ring-[#4d90fe]/30 dark:border-white/20 dark:bg-[#1e1e1e] dark:text-[#e8eaed]"
+                className="rounded-lg border border-slate-300 bg-white py-2 pl-8 pr-3 text-sm text-slate-900 shadow-sm outline-none focus:border-[#4d90fe] focus:ring-2 focus:ring-[#4d90fe]/30 dark:border-white/20 dark:bg-[#1e1e1e] dark:text-[#e8eaed]"
                 value={encryption}
                 onChange={(e) => setEncryption(e.target.value as ComposeEncryption)}
                 aria-label={t(locale, "composePanelEncryption")}
@@ -346,7 +361,7 @@ export function ComposePanel({
           </div>
 
           {encryption === "password" ? (
-            <Input type="password" value={encryptionPassword} onChange={(e) => setEncryptionPassword(e.target.value)} placeholder={t(locale, "composePanelEncryptionPassword")} aria-label={t(locale, "composePanelEncryptionPassword")} autoComplete="off" />
+            <input type="password" value={encryptionPassword} onChange={(e) => setEncryptionPassword(e.target.value)} placeholder={t(locale, "composePanelEncryptionPassword")} aria-label={t(locale, "composePanelEncryptionPassword")} autoComplete="off" className={fieldClass} />
           ) : null}
         </div>
       </div>

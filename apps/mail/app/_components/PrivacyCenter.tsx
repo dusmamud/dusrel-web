@@ -32,12 +32,12 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: (val
 
 function SectionTitle({ children, open, onToggle }: { children: string; open: boolean; onToggle: () => void }) {
   return (
-    <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+    <h3 className="text-[13px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex w-full items-center justify-between gap-3 rounded-lg py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50"
+        className="flex w-full items-center justify-between gap-3 rounded-lg py-1 text-left uppercase focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50"
       >
         <span>{children}</span>
         <svg
@@ -62,8 +62,8 @@ function SectionTitle({ children, open, onToggle }: { children: string; open: bo
 function RowIcon({ name }: { name: "person" | "lock" | "shield" | "eye" | "file" | "sparkle" }) {
   const common = {
     "aria-hidden": true,
-    width: 18,
-    height: 18,
+    width: 20,
+    height: 20,
     viewBox: "0 0 24 24",
     fill: "none",
     stroke: "currentColor",
@@ -78,7 +78,7 @@ function RowIcon({ name }: { name: "person" | "lock" | "shield" | "eye" | "file"
     shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
     eye: (<><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></>),
     file: (<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></>),
-    sparkle: <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z" fill="currentColor" stroke="none" />,
+    sparkle: <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z" />,
   };
   return <svg {...common}>{paths[name]}</svg>;
 }
@@ -121,10 +121,15 @@ export function PrivacyCenter({ locale, onBack, hasRecoveryEmail, onCreateAlias,
 
   return (
     <div className={sidebar ? "bg-white px-4 py-4 dark:bg-[#121212]" : "rounded-lg border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-[#1e1e1e]"}>
-      <div className="mb-4 flex items-center gap-3">
-        <Button variant="ghost" onClick={onBack}>
+      <div className="mb-3 flex items-center gap-3 border-b border-slate-200 pb-3 dark:border-white/10">
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label={t(locale, "pcBack")}
+          className="flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-medium text-slate-500 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-slate-400 dark:hover:text-slate-200"
+        >
           ‹ <span className="uppercase">{t(locale, "pcBack")}</span>
-        </Button>
+        </button>
         {sidebar ? null : <h2 className="text-lg font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "pcTitle")}</h2>}
       </div>
 
@@ -151,9 +156,9 @@ export function PrivacyCenter({ locale, onBack, hasRecoveryEmail, onCreateAlias,
           <a
             href={accountCentreUrl}
             aria-label={!hasRecoveryEmail ? `${t(locale, "pcRecoveryEmail")} — ${t(locale, "pcRecoveryAction")}` : undefined}
-            className="flex items-center justify-between gap-3 rounded-lg px-2 py-2 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:hover:bg-white/5"
+            className="flex items-center justify-between gap-3 rounded-lg px-2 py-3 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:hover:bg-white/5"
           >
-            <span className="flex items-center gap-2 text-[15px] text-slate-900 dark:text-[#e8eaed]"><RowIcon name="person" />{t(locale, "pcRecoveryEmail")}</span>
+            <span className="flex items-center gap-2 text-[15px] text-slate-600 dark:text-[#e8eaed]"><RowIcon name="person" />{t(locale, "pcRecoveryEmail")}</span>
             <span className="flex shrink-0 items-center gap-2">
               {!hasRecoveryEmail && (
                 <span aria-hidden="true" title={t(locale, "pcRecoveryAction")} className="h-2 w-2 rounded-full bg-amber-500" />
@@ -161,13 +166,13 @@ export function PrivacyCenter({ locale, onBack, hasRecoveryEmail, onCreateAlias,
               <span aria-hidden="true" className="text-slate-400">›</span>
             </span>
           </a>
-          <div className="flex items-center justify-between gap-3">
-            <span className="flex items-center gap-2 text-[15px] text-slate-900 dark:text-[#e8eaed]"><RowIcon name="lock" />{t(locale, "pcSecurityHelper")}</span>
+          <div className="flex items-center justify-between gap-3 py-2">
+            <span className="flex items-center gap-2 text-[15px] text-slate-600 dark:text-[#e8eaed]"><RowIcon name="lock" />{t(locale, "pcSecurityHelper")}</span>
             <Switch checked={securityHelper} onChange={handleSecurityHelper} label={t(locale, "pcSecurityHelper")} />
           </div>
           <div>
-            <div className="flex items-center justify-between gap-3">
-              <span className="flex items-center gap-2 text-[15px] text-slate-900 dark:text-[#e8eaed]"><RowIcon name="shield" />{t(locale, "pcTwoFactor")}</span>
+            <div className="flex items-center justify-between gap-3 py-2">
+              <span className="flex items-center gap-2 text-[15px] text-slate-600 dark:text-[#e8eaed]"><RowIcon name="shield" />{t(locale, "pcTwoFactor")}</span>
               <Switch checked={twoFactor} onChange={setTwoFactor} label={t(locale, "pcTwoFactor")} />
             </div>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
@@ -197,8 +202,8 @@ export function PrivacyCenter({ locale, onBack, hasRecoveryEmail, onCreateAlias,
             </div>
           )}
           <div>
-            <button type="button" onClick={onCreateAlias} className="flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[15px] text-slate-900 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-[#e8eaed] dark:hover:bg-white/5">
-              <span aria-hidden="true" className="flex h-[18px] w-[18px] shrink-0 items-center justify-center text-slate-400">@</span>
+            <button type="button" onClick={onCreateAlias} className="flex items-center gap-2 rounded-lg px-2 py-3 text-left text-[15px] text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-[#e8eaed] dark:hover:bg-white/5">
+              <span aria-hidden="true" className="flex h-[20px] w-[20px] shrink-0 items-center justify-center text-slate-400">@</span>
               {t(locale, "pcCreateAlias")}
             </button>
           </div>
@@ -210,13 +215,13 @@ export function PrivacyCenter({ locale, onBack, hasRecoveryEmail, onCreateAlias,
           <SectionTitle open={!collapsed.secure} onToggle={() => toggleSection("secure")}>{t(locale, "pcSecureTitle")}</SectionTitle>
           {!collapsed.secure && (
           <div className="flex flex-col gap-1">
-            <button type="button" onClick={() => onSelectEncryption("password")} className="flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[15px] text-slate-900 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-[#e8eaed] dark:hover:bg-white/5">
+            <button type="button" onClick={() => onSelectEncryption("password")} className="flex items-center gap-2 rounded-lg px-2 py-3 text-left text-[15px] text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-[#e8eaed] dark:hover:bg-white/5">
               <RowIcon name="lock" />{t(locale, "pcEncryptPassword")}
             </button>
-            <button type="button" onClick={() => onSelectEncryption("file")} className="flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[15px] text-slate-900 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-[#e8eaed] dark:hover:bg-white/5">
+            <button type="button" onClick={() => onSelectEncryption("file")} className="flex items-center gap-2 rounded-lg px-2 py-3 text-left text-[15px] text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-[#e8eaed] dark:hover:bg-white/5">
               <RowIcon name="file" />{t(locale, "pcEncryptFile")}
             </button>
-            <button type="button" onClick={() => onSelectEncryption("dusrel")} className="flex items-center gap-2 rounded-lg px-2 py-2 text-left text-[15px] text-slate-900 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-[#e8eaed] dark:hover:bg-white/5">
+            <button type="button" onClick={() => onSelectEncryption("dusrel")} className="flex items-center gap-2 rounded-lg px-2 py-3 text-left text-[15px] text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-[#e8eaed] dark:hover:bg-white/5">
               <RowIcon name="sparkle" />{t(locale, "pcEncryptDusrel")}
             </button>
           </div>

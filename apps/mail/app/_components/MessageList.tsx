@@ -5,8 +5,10 @@ import type { FolderId, MailMessage } from "@dusrel/api-client";
 import { t, type Locale } from "@dusrel/locales";
 import { Button } from "@dusrel/ui";
 
-/** Time for a message: clock time when it is from today, otherwise a medium date. */
-export function formatMessageTime(dateIso: string, locale: Locale): string {
+/** Time for a message: clock time when it is from today, otherwise a medium date.
+    hour24, when given, forces the hour cycle (the reference shows 24-hour
+    times when its 24-hour setting is on); undefined keeps locale default. */
+export function formatMessageTime(dateIso: string, locale: Locale, hour24?: boolean): string {
   const date = new Date(dateIso);
   if (Number.isNaN(date.getTime())) return dateIso;
   const now = new Date();
@@ -15,7 +17,7 @@ export function formatMessageTime(dateIso: string, locale: Locale): string {
     date.getMonth() === now.getMonth() &&
     date.getDate() === now.getDate();
   if (sameDay) {
-    const time = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(date);
+    const time = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", ...(hour24 === undefined ? {} : { hour12: !hour24 }) }).format(date);
     const secs = Math.floor((now.getTime() - date.getTime()) / 1000);
     if (secs >= 0 && secs < 60) return `${time} (${secs} ${t(locale, "msgSecondsAgo")})`;
     const mins = Math.floor(secs / 60);
@@ -33,8 +35,9 @@ export function splitSender(from: string): { name: string; address: string | nul
 }
 
 /** Split a formatted message time into its clock/date part and, when present,
-    the "(X seconds/minutes ago)" suffix — so the row can hide just the suffix
-    on small screens without changing the format used by the reading view. */
+    the "(X seconds/minutes ago)" suffix. The list shows only the clock/date
+    part, like the reference list; the reading view keeps the full string
+    with the suffix. */
 function splitTimeParts(formatted: string): { time: string; suffix: string | null } {
   const match = formatted.match(/^(.*) \((.*)\)$/);
   if (!match) return { time: formatted, suffix: null };
@@ -42,7 +45,7 @@ function splitTimeParts(formatted: string): { time: string; suffix: string | nul
 }
 
 const AVATAR_COLORS = [
-  "bg-gradient-to-br from-slate-400 to-slate-600",
+  "bg-gradient-to-br from-rose-400 to-red-500",
   "bg-gradient-to-br from-[#4d90fe] to-purple-500",
   "bg-gradient-to-br from-green-400 to-teal-600",
   "bg-gradient-to-br from-amber-400 to-orange-500",
@@ -50,7 +53,7 @@ const AVATAR_COLORS = [
 ];
 
 /** Deterministic avatar gradient from the sender string (vivid gradients, like the reference). */
-function avatarColor(sender: string): string {
+export function avatarColor(sender: string): string {
   let hash = 0;
   for (let i = 0; i < sender.length; i++) hash = (hash * 31 + sender.charCodeAt(i)) >>> 0;
   return AVATAR_COLORS[hash % AVATAR_COLORS.length];
@@ -78,6 +81,7 @@ export interface MessageListProps {
   onMoveToTrash?: (id: string) => void;
   onMoveToJunk?: (id: string) => void;
   onToggleRead?: (id: string) => void;
+  hour24?: boolean;
   onGoInbox?: () => void;
   onNewSearch?: () => void;
   query?: string;
@@ -118,6 +122,7 @@ export function MessageList({
   onMoveToTrash,
   onMoveToJunk,
   onToggleRead,
+  hour24,
   onGoInbox,
   onNewSearch,
   query,
@@ -225,17 +230,18 @@ export function MessageList({
     <div className="w-full bg-white text-slate-900 dark:bg-[#121212] dark:text-[#e8eaed]">
       {isSearch ? <h2 className="px-4 pt-4 text-lg font-semibold">{title}</h2> : null}
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-3 py-3 dark:border-white/10">
-        <button type="button" onClick={toggleSelectAll} aria-label={t(locale, "msgSelectAll")} aria-pressed={allVisibleSelected} className="inline-flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-[#e8eaed]">
+        <button type="button" onClick={toggleSelectAll} aria-label={t(locale, "msgSelectAll")} aria-pressed={allVisibleSelected} className="inline-flex items-center gap-2 rounded-lg text-sm font-medium text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-[#e8eaed]">
           <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="9" />{allVisibleSelected ? <path d="M8 12.5l2.5 2.5L16 9.5" /> : null}</svg>
           {t(locale, "msgSelectAll")}
         </button>
-        <Button variant="secondary" onClick={onMarkAllRead}>
-          ✉ {t(locale, "msgMarkAllRead")}
-        </Button>
+        <button type="button" onClick={onMarkAllRead} className="inline-flex items-center gap-2 rounded-lg text-sm font-medium text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-[#e8eaed]">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>
+          {t(locale, "msgMarkAllRead")}
+        </button>
         <div className="relative ml-auto">
-          <Button variant="secondary" onClick={() => setFilterOpen((open) => !open)} aria-haspopup="menu" aria-expanded={filterOpen}>
+          <button type="button" onClick={() => setFilterOpen((open) => !open)} aria-haspopup="menu" aria-expanded={filterOpen} className="inline-flex items-center gap-2 rounded-lg text-sm font-medium text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-[#e8eaed]">
             {t(locale, "msgFilterLabel")} ▾
-          </Button>
+          </button>
           {filterOpen ? (
             <>
               <button type="button" aria-label={t(locale, "shellCancel")} onClick={() => setFilterOpen(false)} className="fixed inset-0 z-40 cursor-default" />
@@ -268,7 +274,7 @@ export function MessageList({
             const sender = splitSender(message.from);
             const initial = (sender.name.charAt(0) || "?").toUpperCase();
             const isSelected = message.id === selectedId;
-            const timeParts = splitTimeParts(formatMessageTime(message.date, locale));
+            const timeParts = splitTimeParts(formatMessageTime(message.date, locale, hour24));
             return (
               <li key={message.id}>
                 <div
@@ -329,7 +335,6 @@ export function MessageList({
                   <span className="hidden min-w-0 flex-1 truncate text-sm text-slate-500 sm:block dark:text-slate-400">{message.body}</span>
                   <span className="shrink-0 text-[13px] text-slate-500 group-hover:hidden group-focus-within:hidden dark:text-slate-400">
                     {timeParts.time}
-                    {timeParts.suffix ? <span className="hidden sm:inline"> ({timeParts.suffix})</span> : null}
                   </span>
                   {onMoveToTrash && onMoveToJunk && onToggleRead ? (
                     <span className="hidden shrink-0 items-center gap-1 group-hover:flex group-focus-within:flex">

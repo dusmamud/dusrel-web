@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { FolderId, MailMessage } from "@dusrel/api-client";
 import { t, type Locale } from "@dusrel/locales";
 import { Button } from "@dusrel/ui";
-import { formatMessageTime, splitSender } from "./MessageList";
+import { avatarColor, formatMessageTime, splitSender } from "./MessageList";
 
 export interface ReadingViewProps {
   locale: Locale;
@@ -19,6 +19,7 @@ export interface ReadingViewProps {
   onToggleRead: () => void;
   onBlock: () => void;
   onPrint: () => void;
+  hour24?: boolean;
 }
 
 const MOVE_FOLDERS: FolderId[] = ["inbox", "sent", "drafts", "archive", "spam", "trash"];
@@ -52,6 +53,7 @@ export function ReadingView({
   onToggleRead,
   onBlock,
   onPrint,
+  hour24,
 }: ReadingViewProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [moveMenuOpen, setMoveMenuOpen] = useState(false);
@@ -90,6 +92,9 @@ export function ReadingView({
             aria-haspopup="menu"
             className={TOOLBAR_BTN}
           >
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+            </svg>
             {t(locale, "msgMoveTo")} ▾
           </button>
           {moveMenuOpen ? (
@@ -152,8 +157,10 @@ export function ReadingView({
         </div>
       </div>
 
+      <h1 className="mt-4 text-2xl font-bold">{message.subject}</h1>
+
       <div className="mt-3 flex items-start gap-3">
-        <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-pink-400 to-orange-300 text-base font-semibold text-white">
+        <span aria-hidden="true" className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${avatarColor(message.from)} text-base font-semibold text-white`}>
           {(sender.name.charAt(0) || "?").toUpperCase()}
         </span>
         <div className="min-w-0 flex-1">
@@ -166,7 +173,7 @@ export function ReadingView({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <span className="text-sm text-slate-500 dark:text-slate-400">{formatMessageTime(message.date, locale)}</span>
+          <span className="text-sm text-slate-500 dark:text-slate-400">{formatMessageTime(message.date, locale, hour24)}</span>
           <button
             type="button"
             aria-label={message.starred ? t(locale, "msgUnstar") : t(locale, "msgStar")}
@@ -178,10 +185,9 @@ export function ReadingView({
         </div>
       </div>
 
-      <div className="mt-4 bg-slate-100 px-2 py-6 sm:px-4 dark:bg-white/5">
+      <div className="mt-4 rounded-2xl bg-slate-100 px-2 py-6 sm:px-4 dark:bg-white/5">
         <div className="mx-auto max-w-[680px] rounded-xl bg-white px-4 py-6 shadow-sm sm:px-6 dark:bg-[#1e1e1e]">
-          <h1 className="text-2xl font-bold">{message.subject}</h1>
-          <p className="mt-4 whitespace-pre-wrap text-base leading-relaxed">{message.body}</p>
+          <p className="whitespace-pre-wrap text-base leading-relaxed">{message.body}</p>
           <div className="mt-6 flex flex-wrap gap-2">
             <Button onClick={onReply}>{t(locale, "msgReply")}</Button>
             <Button variant="secondary" onClick={onForward}>

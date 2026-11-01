@@ -234,4 +234,4 @@ export class HttpMailApi implements MailApi {
 }
 
 export const mailApi: MailApi = new HttpMailApi();
-export const folderIds: FolderId[] = ["inbox", "sent", "drafts", "archive", "spam", "trash"];
+export const folderIds: FolderId[] = ["inbox", "drafts", "spam", "sent", "archive", "trash"];

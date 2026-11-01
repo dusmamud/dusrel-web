@@ -64,7 +64,10 @@ export function MailboxTopBar({
         ) : null}
         <div className="flex-1 max-sm:hidden" />
         <form onSubmit={submitSearch} className="w-full max-w-[340px] flex-1 sm:flex-[2_1_0%]">
-          <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={t(locale, "shellSearchPlaceholder")} aria-label={t(locale, "shellSearchPlaceholder")} type="search" className="h-[42px] py-2.5" />
+          <div className="relative">
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+            <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={t(locale, "shellSearchPlaceholder")} aria-label={t(locale, "shellSearchPlaceholder")} type="search" className="h-[42px] py-2.5 pl-10" />
+          </div>
         </form>
         <div className="flex items-center justify-end gap-3">
           <Link href={counterpartHref} className="shrink-0 rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:border-white/20 dark:text-slate-300">

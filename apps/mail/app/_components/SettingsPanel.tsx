@@ -52,7 +52,7 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: (val
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <span className="text-sm text-slate-900 dark:text-[#e8eaed]">{label}</span>
+      <span className="text-sm font-semibold text-slate-900 dark:text-[#e8eaed]">{label}</span>
       <span className="flex flex-1 items-center justify-end gap-3">{children}</span>
     </div>
   );
@@ -200,13 +200,14 @@ export function SettingsPanel({
 
       <div className="flex flex-col gap-4 lg:flex-row">
         <nav className="flex shrink-0 flex-col gap-1 lg:w-56" aria-label={t(locale, "spTitle")}>
+          <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t(locale, "spTitle")}</p>
           {nav.map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => setActiveSection(item.id)}
               aria-current={activeSection === item.id ? "true" : undefined}
-              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-left text-[15px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 ${
+              className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[15px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 ${
                 activeSection === item.id ? "bg-slate-100 text-slate-900 dark:bg-white/10 dark:text-[#e8eaed]" : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5"
               }`}
             >
@@ -222,13 +223,15 @@ export function SettingsPanel({
         <div className="min-w-0 flex-1 space-y-4">
           {activeSection === "account" && (
             <div className="space-y-4">
-              <h3 className="text-base font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spAccount")}</h3>
-              <Field label={t(locale, "spDisplayName")}>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spAccount")}</h3>
+              <label className="block">
+                <span className="mb-1 block text-sm font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spDisplayName")}</span>
                 <Input value={displayName} onChange={(e) => onDisplayNameChange(e.target.value)} />
-              </Field>
-              <Field label={t(locale, "spDefaultEmail")}>
+              </label>
+              <div>
+                <span className="mb-1 block text-sm font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spDefaultEmail")}</span>
                 <span className="block text-sm text-slate-900 dark:text-[#e8eaed]">{email}</span>
-              </Field>
+              </div>
               <Row label={t(locale, "spPassword")}>
                 <span aria-hidden="true" className="text-sm tracking-widest text-slate-900 dark:text-[#e8eaed]">
                   ••••••••
@@ -237,20 +240,29 @@ export function SettingsPanel({
                   {t(locale, "spChange")}
                 </Button>
               </Row>
-              <Row label={t(locale, "spAppearance")}>
+              <p className="text-xl font-bold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spSystemPreferences")}</p>
+              <div>
+                <p className="mb-2 text-sm font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spAppearance")}</p>
                 <AppearanceCards />
-              </Row>
-              <Row label={t(locale, "spTimeFormat")}>
-                <Switch checked={time24h} onChange={setTime24h} label={t(locale, "spTimeFormat")} />
-              </Row>
-              <Row label={t(locale, "spAutoTimezone")}>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spTimeFormatLabel")}</span>
+                  <span className="block text-sm text-slate-600 dark:text-slate-300">{t(locale, "spTimeFormat")}</span>
+                </span>
+                <Switch checked={time24h} onChange={setTime24h} label={t(locale, "spTimeFormatLabel")} />
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spAutoTimezone")}</span>
+                  {autoTimezone && browserTimezone && (
+                    <span className="block text-sm text-slate-600 dark:text-slate-300">
+                      {t(locale, "spTimezone")}: {browserTimezone}
+                    </span>
+                  )}
+                </span>
                 <Switch checked={autoTimezone} onChange={setAutoTimezone} label={t(locale, "spAutoTimezone")} />
-              </Row>
-              {autoTimezone && browserTimezone && (
-                <p className="text-sm text-slate-600 dark:text-slate-300">
-                  {t(locale, "spTimezone")}: {browserTimezone}
-                </p>
-              )}
+              </div>
               <div className="border-t border-slate-200 pt-4 dark:border-white/10">
                 <Row label={t(locale, "spDelete")}>
                   <button
@@ -267,14 +279,14 @@ export function SettingsPanel({
 
           {activeSection === "upgrade" && (
             <div className="space-y-4">
-              <h3 className="text-base font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spUpgrade")}</h3>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spUpgrade")}</h3>
               {pricingNote}
             </div>
           )}
 
           {activeSection === "privacy" && (
             <div className="space-y-4">
-              <h3 className="text-base font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spPrivacy")}</h3>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spPrivacy")}</h3>
               <Row label={t(locale, "spTwoFactor")}>
                 <a className={linkClass} href={accountCentreUrl}>
                   {t(locale, "spManageCentre")}
@@ -299,7 +311,7 @@ export function SettingsPanel({
 
           {activeSection === "sessions" && (
             <div className="space-y-3">
-              <h3 className="text-base font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spSessions")}</h3>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spSessions")}</h3>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span>
                   <span className="block text-sm font-medium text-slate-900 dark:text-[#e8eaed]">{t(locale, "spCurrentSession")}</span>
@@ -321,7 +333,7 @@ export function SettingsPanel({
 
           {activeSection === "aliases" && (
             <div className="space-y-3">
-              <h3 className="text-base font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spAliases")}</h3>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spAliases")}</h3>
               <p className="text-sm text-slate-900 dark:text-[#e8eaed]">
                 {t(locale, "spDefaultIdentity")}: {displayName} / {email}
               </p>
@@ -344,7 +356,7 @@ export function SettingsPanel({
 
           {activeSection === "hide" && (
             <div className="space-y-2">
-              <h3 className="text-base font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spHide")}</h3>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spHide")}</h3>
               <p className="font-medium text-slate-900 dark:text-[#e8eaed]">{t(locale, "spHideSoon")}</p>
               <p className="text-sm text-slate-600 dark:text-slate-300">{t(locale, "spHideNote")}</p>
             </div>
@@ -352,7 +364,7 @@ export function SettingsPanel({
 
           {activeSection === "autoreply" && (
             <div className="space-y-3">
-              <h3 className="text-base font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spAutoReply")}</h3>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spAutoReply")}</h3>
               <Row label={t(locale, "spAutoReply")}>
                 <span className="text-sm text-slate-600 dark:text-slate-300">{autoReply.enabled ? t(locale, "spOn") : t(locale, "spOff")}</span>
                 <Switch
@@ -376,7 +388,7 @@ export function SettingsPanel({
 
           {activeSection === "signature" && (
             <div className="space-y-3">
-              <h3 className="text-base font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spSignature")}</h3>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spSignature")}</h3>
               <Field label={t(locale, "spSignature")}>
                 <Textarea rows={4} value={signature} onChange={(e) => onSignatureChange(e.target.value)} />
               </Field>
@@ -386,14 +398,14 @@ export function SettingsPanel({
 
           {activeSection === "billing" && (
             <div className="space-y-4">
-              <h3 className="text-base font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spBilling")}</h3>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spBilling")}</h3>
               {pricingNote}
             </div>
           )}
 
           {activeSection === "download" && (
             <div className="space-y-3">
-              <h3 className="text-base font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spDownload")}</h3>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-[#e8eaed]">{t(locale, "spDownload")}</h3>
               <div>{downloadSlot ?? <p className="text-sm text-slate-600 dark:text-slate-300">{t(locale, "spDownloadNote")}</p>}</div>
             </div>
           )}

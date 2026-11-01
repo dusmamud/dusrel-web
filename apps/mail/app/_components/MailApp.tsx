@@ -36,6 +36,7 @@ const COMPOSE_DRAFT_KEY = "dusrel-mail-compose-draft";
 const DISPLAY_NAME_KEY = "dusrel-mail-display-name";
 const SIGNATURE_KEY = "dusrel-mail-signature";
 const AUTO_REPLY_KEY = "dusrel-mail-auto-reply";
+const TIME24H_KEY = "dusrel-mail-time24h";
 
 function readStored<T>(key: string, fallback: T): T {
   try {
@@ -58,6 +59,10 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
   const [topQuery, setTopQuery] = useState("");
   const [results, setResults] = useState<MailMessage[]>([]);
   const [displayName, setDisplayName] = useState("You");
+  // Mirror of the SettingsPanel 24-hour switch, read from the same
+  // localStorage key on mount (the switch owns the setting; navigation
+  // remounts re-read it, like the other persisted settings).
+  const [time24h, setTime24h] = useState(true);
   const [email, setEmail] = useState("you@dusrel.com");
   const [signature, setSignature] = useState("— Sent with Dusrel Mail");
   const [privacyOpen, setPrivacyOpen] = useState(false);
@@ -110,6 +115,12 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
       }
     } catch {
       // Corrupt value: the default stays.
+    }
+    try {
+      const stored24h = window.localStorage.getItem(TIME24H_KEY);
+      if (stored24h === "true" || stored24h === "false") setTime24h(stored24h === "true");
+    } catch {
+      // Private mode: the default stays.
     }
     try {
       const pending = window.sessionStorage.getItem(ACTIVE_CUSTOM_KEY);
@@ -499,6 +510,7 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
         setSelectedId(null);
       }}
       onPrint={() => window.print()}
+      hour24={time24h}
     />
   ) : null;
 
@@ -610,6 +622,7 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
                     onSelect={() => {}}
                     onToggleStar={() => {}}
                     onMarkAllRead={() => {}}
+                    hour24={time24h}
                     illustration={folderArt}
                   />
                 </div>
@@ -655,6 +668,7 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
                   onMoveToTrash={(id) => move(id, "trash")}
                   onMoveToJunk={(id) => move(id, "spam")}
                   onToggleRead={toggleRead}
+                  hour24={time24h}
                   onGoInbox={() => router.push(localePath(locale, "/inbox"))}
                   onNewSearch={() => setQuery("")}
                   query={query}
@@ -688,6 +702,7 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
                   onMoveToTrash={(id) => move(id, "trash")}
                   onMoveToJunk={(id) => move(id, "spam")}
                   onToggleRead={toggleRead}
+                  hour24={time24h}
                   illustration={folderArt}
                 />
               )

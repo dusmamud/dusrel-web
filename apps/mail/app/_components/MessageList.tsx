@@ -5,9 +5,7 @@ import type { FolderId, MailMessage } from "@dusrel/api-client";
 import { t, type Locale } from "@dusrel/locales";
 import { Button } from "@dusrel/ui";
 
-/** Time for a message: clock time when it is from today, otherwise a medium date.
-    hour24, when given, forces the hour cycle (the reference shows 24-hour
-    times when its 24-hour setting is on); undefined keeps locale default. */
+/** Time for a message: clock time when it is from today, otherwise a medium date. */
 export function formatMessageTime(dateIso: string, locale: Locale, hour24?: boolean): string {
   const date = new Date(dateIso);
   if (Number.isNaN(date.getTime())) return dateIso;
@@ -17,7 +15,11 @@ export function formatMessageTime(dateIso: string, locale: Locale, hour24?: bool
     date.getMonth() === now.getMonth() &&
     date.getDate() === now.getDate();
   if (sameDay) {
-    const time = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", ...(hour24 === undefined ? {} : { hour12: !hour24 }) }).format(date);
+    const time = new Intl.DateTimeFormat(locale, {
+      hour: "2-digit",
+      minute: "2-digit",
+      ...(hour24 === undefined ? {} : { hour12: !hour24 }),
+    }).format(date);
     const secs = Math.floor((now.getTime() - date.getTime()) / 1000);
     if (secs >= 0 && secs < 60) return `${time} (${secs} ${t(locale, "msgSecondsAgo")})`;
     const mins = Math.floor(secs / 60);
@@ -34,29 +36,28 @@ export function splitSender(from: string): { name: string; address: string | nul
   return { name: from, address: null };
 }
 
-/** Split a formatted message time into its clock/date part and, when present,
-    the "(X seconds/minutes ago)" suffix. The list shows only the clock/date
-    part, like the reference list; the reading view keeps the full string
-    with the suffix. */
-function splitTimeParts(formatted: string): { time: string; suffix: string | null } {
-  const match = formatted.match(/^(.*) \((.*)\)$/);
+export function splitTimeParts(formatted: string): { time: string; suffix: string | null } {
+  const match = formatted.match(/^(.*?)(\s*\(.*?\))$/);
   if (!match) return { time: formatted, suffix: null };
   return { time: match[1], suffix: match[2] };
 }
 
-const AVATAR_COLORS = [
-  "bg-gradient-to-br from-rose-400 to-red-500",
-  "bg-gradient-to-br from-[#4d90fe] to-purple-500",
-  "bg-gradient-to-br from-green-400 to-teal-600",
-  "bg-gradient-to-br from-amber-400 to-orange-500",
-  "bg-gradient-to-br from-purple-400 to-pink-500",
+const AVATAR_GRADIENTS = [
+  "radial-gradient(146.59% 146.59% at 96.25% 106.25%, rgb(88, 135, 255) 16.15%, rgb(255, 160, 251) 72.4%)",
+  "radial-gradient(155.92% 155.92% at 81.25% 117.5%, rgb(252, 125, 255) 17.29%, rgb(255, 237, 145) 75.93%)",
+  "radial-gradient(143.34% 143.34% at 12.5% 115%, rgb(255, 125, 211) 31.8%, rgb(255, 145, 145) 75.7%)",
+  "radial-gradient(140% 140% at 80% 20%, rgb(99, 102, 241) 0%, rgb(168, 85, 247) 100%)",
+  "radial-gradient(140% 140% at 20% 80%, rgb(16, 185, 129) 0%, rgb(59, 130, 246) 100%)",
 ];
 
-/** Deterministic avatar gradient from the sender string (vivid gradients, like the reference). */
-export function avatarColor(sender: string): string {
+export function avatarGradient(sender: string): string {
   let hash = 0;
   for (let i = 0; i < sender.length; i++) hash = (hash * 31 + sender.charCodeAt(i)) >>> 0;
-  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+  return AVATAR_GRADIENTS[hash % AVATAR_GRADIENTS.length];
+}
+
+export function avatarColor(sender: string): string {
+  return "bg-slate-800 text-white";
 }
 
 type Filter = "all" | "unread" | "starred" | "attachments" | "encrypted";
@@ -101,9 +102,9 @@ function EmptyState({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center gap-3 px-4 py-16 text-center">
+    <div className="flex flex-col items-center gap-3 px-4 py-20 text-center">
       {illustration}
-      <p className="text-base font-medium text-slate-900 dark:text-[#e8eaed]">{text}</p>
+      <p className="text-base font-semibold text-slate-900 dark:text-[#e8eaed]">{text}</p>
       {note ? <p className="max-w-md text-sm text-slate-500 dark:text-slate-400">{note}</p> : null}
       {actions}
     </div>
@@ -131,6 +132,7 @@ export function MessageList({
 }: MessageListProps) {
   const [filter, setFilter] = useState<Filter>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const visible = useMemo(() => {
     switch (filter) {
@@ -139,10 +141,8 @@ export function MessageList({
       case "starred":
         return messages.filter((m) => m.starred);
       case "attachments":
-        // Only messages that actually carry attachment metadata match.
         return messages.filter((m) => (m.attachmentNames?.length ?? 0) > 0);
       case "encrypted":
-        // Only messages with a non-default encryption choice match.
         return messages.filter((m) => !!m.encryption && m.encryption !== "standard");
       default:
         return messages;
@@ -172,6 +172,15 @@ export function MessageList({
     });
   };
 
+  useEffect(() => {
+    if (!filterOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFilterOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [filterOpen]);
+
   const searchNoResults = Boolean(isSearch && query && messages.length === 0);
 
   let empty: ReactNode = null;
@@ -187,7 +196,7 @@ export function MessageList({
           text={t(locale, "msgNothingFound")}
           note={t(locale, "msgNothingFoundHint")}
           actions={
-            <div className="flex flex-wrap justify-center gap-2">
+            <div className="flex flex-wrap justify-center gap-2 pt-2">
               {onGoInbox ? <Button onClick={onGoInbox}>{t(locale, "msgGoInbox")}</Button> : null}
               {onNewSearch ? (
                 <Button variant="secondary" onClick={onNewSearch}>
@@ -201,13 +210,7 @@ export function MessageList({
     } else if (folder === "trash") {
       empty = <EmptyState illustration={illustration} text={t(locale, "msgEmptyTrash")} note={t(locale, "msgAutoDeleteNote")} />;
     } else if (folder === "spam") {
-      empty = (
-        <EmptyState
-          illustration={illustration}
-          text={t(locale, "msgEmptyDraftsSentJunk")}
-          note={t(locale, "msgAutoDeleteNote")}
-        />
-      );
+      empty = <EmptyState illustration={illustration} text={t(locale, "msgEmptyDraftsSentJunk")} note={t(locale, "msgAutoDeleteNote")} />;
     } else if (folder === "drafts" || folder === "sent") {
       empty = <EmptyState illustration={illustration} text={t(locale, "msgEmptyDraftsSentJunk")} />;
     } else {
@@ -215,38 +218,81 @@ export function MessageList({
     }
   }
 
-  const [filterOpen, setFilterOpen] = useState(false);
-
-  useEffect(() => {
-    if (!filterOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setFilterOpen(false);
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [filterOpen]);
-
   return (
-    <div className="w-full bg-white text-slate-900 dark:bg-[#121212] dark:text-[#e8eaed]">
+    <div className="w-full bg-white text-slate-900 dark:bg-[#181818] dark:text-[#eaebed]">
       {isSearch ? <h2 className="px-4 pt-4 text-lg font-semibold">{title}</h2> : null}
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-3 py-3 dark:border-white/10">
-        <button type="button" onClick={toggleSelectAll} aria-label={t(locale, "msgSelectAll")} aria-pressed={allVisibleSelected} className="inline-flex items-center gap-2 rounded-lg text-sm font-medium text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-[#e8eaed]">
-          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="9" />{allVisibleSelected ? <path d="M8 12.5l2.5 2.5L16 9.5" /> : null}</svg>
-          {t(locale, "msgSelectAll")}
-        </button>
-        <button type="button" onClick={onMarkAllRead} className="inline-flex items-center gap-2 rounded-lg text-sm font-medium text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-[#e8eaed]">
-          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>
-          {t(locale, "msgMarkAllRead")}
-        </button>
-        <div className="relative ml-auto">
-          <button type="button" onClick={() => setFilterOpen((open) => !open)} aria-haspopup="menu" aria-expanded={filterOpen} className="inline-flex items-center gap-2 rounded-lg text-sm font-medium text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-[#e8eaed]">
-            {t(locale, "msgFilterLabel")} ▾
+
+      {/* Atomic Style List Header Bar */}
+      <div className="flex h-11 items-center justify-between border-b border-slate-200/80 px-4 text-xs font-medium dark:border-white/10">
+        <div className="flex items-center gap-3">
+          {/* Select all checkbox & label */}
+          <button
+            type="button"
+            onClick={toggleSelectAll}
+            aria-label={t(locale, "msgSelectAll")}
+            aria-pressed={allVisibleSelected}
+            className="flex items-center gap-2 rounded text-slate-700 transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-slate-300 dark:hover:text-white"
+          >
+            <span
+              className={`flex h-4 w-4 items-center justify-center rounded border transition-colors ${
+                allVisibleSelected
+                  ? "border-[#4d90fe] bg-[#4d90fe] text-white"
+                  : "border-slate-300 bg-white dark:border-white/20 dark:bg-white/5"
+              }`}
+            >
+              {allVisibleSelected ? (
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M2 6l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              ) : null}
+            </span>
+            <span>{t(locale, "msgSelectAll")}</span>
           </button>
+
+          {/* Mark all as read */}
+          <button
+            type="button"
+            onClick={onMarkAllRead}
+            className="flex items-center gap-1.5 rounded text-slate-500 transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-slate-400 dark:hover:text-white"
+          >
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M4 10l4 4 8-8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span>{t(locale, "msgMarkAllRead")}</span>
+          </button>
+        </div>
+
+        {/* Filter Dropdown */}
+        <div className="relative">
+          <button
+            data-testid="toolbar-filter-button"
+            type="button"
+            onClick={() => setFilterOpen((open) => !open)}
+            aria-haspopup="menu"
+            aria-expanded={filterOpen}
+            className="flex items-center gap-1.5 rounded px-2 py-1 text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white"
+          >
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M3 5h14M6 10h8M8 15h4" strokeLinecap="round" />
+            </svg>
+            <span>{t(locale, "msgFilterLabel")}</span>
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor">
+              <path d="M2 3.5l3 3 3-3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+
           {filterOpen ? (
             <>
-              <button type="button" aria-label={t(locale, "shellCancel")} onClick={() => setFilterOpen(false)} className="fixed inset-0 z-40 cursor-default" />
-              <div role="menu" className="absolute right-0 z-50 mt-2 w-56 rounded-xl border border-slate-200 bg-white py-2 shadow-lg dark:border-white/10 dark:bg-[#1e1e1e]">
-                <p className="px-4 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t(locale, "msgFilterLabel")}</p>
+              <button
+                type="button"
+                aria-label={t(locale, "shellCancel")}
+                onClick={() => setFilterOpen(false)}
+                className="fixed inset-0 z-40 cursor-default"
+              />
+              <div
+                role="menu"
+                className="absolute right-0 z-50 mt-1.5 w-48 rounded-xl border border-slate-200 bg-white py-1.5 shadow-xl dark:border-white/10 dark:bg-[#1e1e1e]"
+              >
                 {FILTER_OPTIONS.map((option) => (
                   <button
                     key={option.id}
@@ -256,11 +302,21 @@ export function MessageList({
                       setFilter(option.id);
                       setFilterOpen(false);
                     }}
-                    className="block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5"
+                    className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-xs transition-colors ${
+                      filter === option.id
+                        ? "bg-slate-100 font-semibold text-slate-900 dark:bg-white/10 dark:text-white"
+                        : "text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5"
+                    }`}
                   >
-                    {filter === option.id ? "✓ " : ""}
-                    {option.prefix}
-                    {t(locale, option.key)}
+                    <span>
+                      {option.prefix}
+                      {t(locale, option.key)}
+                    </span>
+                    {filter === option.id && (
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M2 6l3 3 5-5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
                   </button>
                 ))}
               </div>
@@ -268,114 +324,185 @@ export function MessageList({
           ) : null}
         </div>
       </div>
+
+      {/* Message Items Table */}
       {empty ?? (
-        <ul>
+        <ul className="divide-y divide-slate-100 dark:divide-white/5">
           {visible.map((message) => {
             const sender = splitSender(message.from);
             const initial = (sender.name.charAt(0) || "?").toUpperCase();
             const isSelected = message.id === selectedId;
+            const isChecked = selected.has(message.id);
             const timeParts = splitTimeParts(formatMessageTime(message.date, locale, hour24));
+            const isUnread = !message.read;
+
             return (
               <li key={message.id}>
                 <div
                   onClick={() => onSelect(message.id)}
-                  onKeyDown={(e) => {
-                    // Only the row itself opens on Enter/Space. Inner tab stops
-                    // (checkbox, star) handle their own keys; ignoring bubbled
-                    // events here stops Space on the checkbox from also opening
-                    // the message.
-                    if (e.target !== e.currentTarget) return;
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      onSelect(message.id);
-                    }
-                  }}
                   tabIndex={0}
                   role="button"
                   aria-label={`${sender.name}: ${message.subject}`}
-                  className={`group flex cursor-pointer items-center gap-2 border-b border-slate-200 px-4 py-2 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#4d90fe]/50 dark:border-white/10 dark:hover:bg-white/5 ${
-                    isSelected ? "bg-slate-100 dark:bg-white/10" : ""
+                  className={`group relative flex min-h-[44px] cursor-pointer items-center gap-3 px-4 py-2 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#4d90fe]/50 ${
+                    isSelected
+                      ? "bg-slate-100/90 dark:bg-white/10"
+                      : isUnread
+                      ? "bg-slate-50/50 hover:bg-slate-100/60 dark:bg-white/[0.02] dark:hover:bg-white/5"
+                      : "bg-white hover:bg-slate-50 dark:bg-[#181818] dark:hover:bg-white/[0.03]"
                   }`}
                 >
-                  <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${message.read ? "bg-transparent" : "bg-green-500"}`} />
-                  <input
-                    type="checkbox"
-                    checked={selected.has(message.id)}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      toggleRowSelected(message.id);
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    aria-label={sender.name}
-                    className="h-4 w-4 shrink-0 accent-[#4d90fe] opacity-0 checked:opacity-100 focus:opacity-100 group-hover:opacity-100 max-lg:opacity-100 max-sm:hidden"
-                  />
-                  <span
-                    aria-hidden="true"
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white ${avatarColor(message.from)}`}
-                  >
-                    {initial}
-                  </span>
-                  <span className="max-w-[90px] shrink-0 truncate text-base font-bold text-slate-900 sm:max-w-[180px] dark:text-[#e8eaed]">
-                    {sender.name}
-                  </span>
-                  <button
-                    type="button"
-                    aria-label={message.starred ? t(locale, "msgUnstar") : t(locale, "msgStar")}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleStar(message.id);
-                    }}
-                    className={`-m-2 shrink-0 p-2 text-base leading-none ${message.starred ? "text-yellow-500" : "text-slate-400 hover:text-yellow-500"}`}
-                  >
-                    {message.starred ? "★" : "☆"}
-                  </button>
-                  <span className="min-w-0 flex-1 truncate text-base font-bold text-slate-900 dark:text-[#e8eaed]">
-                    {message.subject}
-                  </span>
-                  <span className="hidden min-w-0 flex-1 truncate text-sm text-slate-500 sm:block dark:text-slate-400">{message.body}</span>
-                  <span className="shrink-0 text-[13px] text-slate-500 group-hover:hidden group-focus-within:hidden dark:text-slate-400">
-                    {timeParts.time}
-                  </span>
-                  {onMoveToTrash && onMoveToJunk && onToggleRead ? (
-                    <span className="hidden shrink-0 items-center gap-1 group-hover:flex group-focus-within:flex">
-                      <button
-                        type="button"
-                        aria-label={t(locale, "msgMoveToTrash")}
-                        title={t(locale, "msgMoveToTrash")}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onMoveToTrash(message.id);
-                        }}
-                        className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:hover:bg-white/10 dark:hover:text-slate-200"
+                  {/* Left Column: Avatar / Checkbox Swap + Sender Name */}
+                  <div className="flex min-w-[140px] sm:min-w-[180px] max-w-[200px] shrink-0 items-center gap-2.5">
+                    {/* Avatar swaps to Checkbox on hover or when checked */}
+                    <div
+                      className="relative flex h-7 w-7 shrink-0 items-center justify-center"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {/* Checkbox */}
+                      <label
+                        data-testid="email-item-checkbox"
+                        className={`absolute inset-0 z-10 flex cursor-pointer items-center justify-center transition-opacity ${
+                          isChecked ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                        }`}
                       >
-                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
-                      </button>
-                      <button
-                        type="button"
-                        aria-label={t(locale, "msgMoveToJunk")}
-                        title={t(locale, "msgMoveToJunk")}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onMoveToJunk(message.id);
-                        }}
-                        className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:hover:bg-white/10 dark:hover:text-slate-200"
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleRowSelected(message.id)}
+                          className="h-4 w-4 rounded border-slate-300 accent-[#4d90fe]"
+                        />
+                      </label>
+
+                      {/* Initial Avatar */}
+                      <div
+                        className={`h-7 w-7 rounded-full p-0.5 transition-opacity ${
+                          isChecked ? "opacity-0" : "opacity-100 group-hover:opacity-0"
+                        }`}
+                        style={{ background: avatarGradient(message.from) }}
                       >
-                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="4.93" y1="4.93" x2="19.07" y2="19.07" /></svg>
-                      </button>
-                      <button
-                        type="button"
-                        aria-label={t(locale, message.read ? "msgMarkUnread" : "msgMarkRead")}
-                        title={t(locale, message.read ? "msgMarkUnread" : "msgMarkRead")}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onToggleRead(message.id);
-                        }}
-                        className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4d90fe]/50 dark:hover:bg-white/10 dark:hover:text-slate-200"
-                      >
-                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>
-                      </button>
+                        <div className="flex h-full w-full items-center justify-center rounded-full bg-slate-900/40 text-[11px] font-bold text-white">
+                          {initial}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Author Name */}
+                    <span
+                      className={`truncate ${
+                        isUnread
+                          ? "font-semibold text-slate-900 dark:text-white"
+                          : "font-normal text-slate-700 dark:text-slate-300"
+                      }`}
+                    >
+                      {sender.name}
                     </span>
-                  ) : null}
+                  </div>
+
+                  {/* Center Column: Star + Subject + Snippet Preview */}
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <button
+                      data-testid="email-star-button"
+                      data-starred={message.starred}
+                      type="button"
+                      aria-label={message.starred ? t(locale, "msgUnstar") : t(locale, "msgStar")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleStar(message.id);
+                      }}
+                      className="shrink-0 p-1 text-slate-400 transition-colors hover:text-amber-400"
+                    >
+                      {message.starred ? (
+                        <svg width="15" height="15" viewBox="0 0 20 20" fill="rgb(245, 158, 11)">
+                          <path d="M10 1.667l2.572 5.21 5.75.836-4.16 4.056.982 5.727L10 14.792l-5.144 2.704.982-5.727-4.16-4.056 5.75-.836L10 1.667z" />
+                        </svg>
+                      ) : (
+                        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <path d="M10 1.667l2.572 5.21 5.75.836-4.16 4.056.982 5.727L10 14.792l-5.144 2.704.982-5.727-4.16-4.056 5.75-.836L10 1.667z" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </button>
+
+                    <div className="min-w-0 flex-1 truncate">
+                      <span
+                        className={`mr-2 ${
+                          isUnread
+                            ? "font-semibold text-slate-900 dark:text-white"
+                            : "font-normal text-slate-800 dark:text-[#eaebed]"
+                        }`}
+                      >
+                        {message.subject}
+                      </span>
+                      <span className="text-slate-500 dark:text-slate-400">
+                        {message.body}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Time OR Quick Hover Actions */}
+                  <div className="shrink-0 flex items-center justify-end">
+                    {/* Timestamp: visible normally, hidden on group-hover */}
+                    <span className="text-xs text-slate-400 tabular-nums group-hover:hidden dark:text-slate-500">
+                      {timeParts.time}
+                    </span>
+
+                    {/* Hover Action Toolbar: visible on hover */}
+                    <div className="hidden group-hover:flex items-center gap-1">
+                      {onToggleRead && (
+                        <button
+                          type="button"
+                          aria-label={t(locale, isUnread ? "msgMarkRead" : "msgMarkUnread")}
+                          title={t(locale, isUnread ? "msgMarkRead" : "msgMarkUnread")}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleRead(message.id);
+                          }}
+                          className="rounded p-1 text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-slate-200"
+                        >
+                          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <path d="M2.5 5h15v10h-15V5z" strokeLinecap="round" strokeLinejoin="round" />
+                            <path d="M2.5 6l7.5 5 7.5-5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </button>
+                      )}
+
+                      {onMoveToJunk && (
+                        <button
+                          type="button"
+                          data-testid="email-junk-button"
+                          aria-label={t(locale, "msgMoveToJunk")}
+                          title={t(locale, "msgMoveToJunk")}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onMoveToJunk(message.id);
+                          }}
+                          className="rounded p-1 text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-slate-200"
+                        >
+                          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <circle cx="10" cy="10" r="7.5" />
+                            <path d="M4.5 4.5l11 11" strokeLinecap="round" />
+                          </svg>
+                        </button>
+                      )}
+
+                      {onMoveToTrash && (
+                        <button
+                          type="button"
+                          data-testid="email-trash-button"
+                          aria-label={t(locale, "msgMoveToTrash")}
+                          title={t(locale, "msgMoveToTrash")}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onMoveToTrash(message.id);
+                          }}
+                          className="rounded p-1 text-slate-400 hover:bg-slate-200/60 hover:text-rose-600 dark:hover:bg-white/10 dark:hover:text-rose-400"
+                        >
+                          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <path d="M3 5h14M7 5V3h6v2M5 5v12h10V5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </li>
             );

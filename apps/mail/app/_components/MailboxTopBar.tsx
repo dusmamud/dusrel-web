@@ -46,16 +46,16 @@ export function MailboxTopBar({
     <header className="border-b border-slate-200/70 bg-white/85 backdrop-blur-md dark:border-white/10 dark:bg-[#121212]/85">
       <div className="flex items-center gap-3 px-4 py-3">
         {onMenu ? (
-          <button type="button" onClick={onMenu} aria-label={t(locale, "shellMenu")} className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-base leading-none text-slate-700 dark:border-white/20 dark:text-slate-300 lg:hidden">
+          <button type="button" onClick={onMenu} aria-label={t(locale, "shellMenu")} className="min-h-10 shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-base leading-none text-slate-700 dark:border-white/20 dark:text-slate-300 lg:hidden">
             ☰
           </button>
         ) : null}
-        <div className="flex-1" />
-        <form onSubmit={submitSearch} className="w-full max-w-[340px] flex-1">
-          <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={t(locale, "shellSearchPlaceholder")} aria-label={t(locale, "shellSearchPlaceholder")} type="search" />
+        <div className="flex-1 max-sm:hidden" />
+        <form onSubmit={submitSearch} className="w-full max-w-[340px] flex-1 sm:flex-[2_1_0%]">
+          <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={t(locale, "shellSearchPlaceholder")} aria-label={t(locale, "shellSearchPlaceholder")} type="search" className="py-2.5" />
         </form>
         <div className="flex items-center justify-end gap-3">
-          <Link href={counterpartHref} className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 dark:border-white/20 dark:text-slate-300">
+          <Link href={counterpartHref} className="shrink-0 rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-700 dark:border-white/20 dark:text-slate-300">
             {locale === "en" ? t(locale, "shellLocaleHindi") : t(locale, "shellLocaleEnglish")}
           </Link>
           <div className="relative shrink-0">
@@ -65,7 +65,7 @@ export function MailboxTopBar({
               aria-label={t(locale, "shellAccountMenu")}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#4d90fe] via-purple-400 to-pink-400 text-sm font-semibold text-white hover:opacity-90"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#4d90fe] via-purple-400 to-pink-400 text-sm font-semibold text-white hover:opacity-90"
             >
               {initial}
             </button>

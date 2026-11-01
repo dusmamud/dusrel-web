@@ -324,7 +324,7 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
   // One sidebar definition for desktop and the mobile drawer: folders by
   // default, the Privacy Center as a sidebar mode when it is open.
   const sidebarContent = privacyOpen ? (
-    <div className="w-64 shrink-0 border-r border-slate-200 bg-white dark:border-white/10 dark:bg-[#121212]">
+    <div className="h-full w-64 shrink-0 border-r border-slate-200 bg-white dark:border-white/10 dark:bg-[#121212]">
       <PrivacyCenter
         variant="sidebar"
         locale={locale}
@@ -344,6 +344,7 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
       activeId={activeCustom ?? (view === "folder" ? folder : "")}
       onSelect={selectFolder}
       onCompose={() => {
+        setSidebarOpen(false);
         if (view !== "compose") openCompose({ to: "", subject: "", body: "" });
       }}
       onOpenPrivacyCenter={openPrivacy}
@@ -355,7 +356,7 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
 
   return (
     <div className="min-h-screen bg-white text-slate-900 dark:bg-[#121212] dark:text-[#e8eaed]">
-      <div className="mx-auto flex max-w-[1400px] flex-col lg:flex-row">
+      <div className="flex flex-col lg:flex-row">
         <div className="hidden shrink-0 lg:block">
           <MailboxRail locale={locale} activeItem="mail" />
         </div>
@@ -422,7 +423,7 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
                     if (e.target === e.currentTarget) router.push(localePath(locale, "/inbox"));
                   }}
                 >
-                  <div className="my-auto w-full max-w-[860px]">
+                  <div className="my-auto max-h-[calc(100dvh-1rem)] w-full max-w-[860px] overflow-y-auto">
                     <SettingsPanel
                       locale={locale}
                       displayName={displayName}
@@ -492,11 +493,12 @@ export function MailApp({ currentPath, folder = "inbox", locale, view }: { curre
 
       {composeOpen && view !== "compose" ? (
         <>
-          <div className="pointer-events-none fixed inset-0 z-30 bg-slate-900/5" aria-hidden="true" />
-          <div className="fixed inset-x-0 bottom-0 z-40 sm:inset-x-auto sm:bottom-4 sm:right-4 sm:w-[640px] sm:max-w-[calc(100vw-2rem)]">
+          <div className="pointer-events-none fixed inset-0 z-30 bg-slate-900/30" aria-hidden="true" />
+          <div className="fixed inset-x-0 bottom-0 z-40 sm:inset-x-auto sm:right-4 sm:w-[640px] sm:max-w-[calc(100vw-2rem)]">
           <div className="max-h-[90vh] overflow-y-auto">
             <ComposePanel
               key={composeKey}
+              docked
               locale={locale}
               displayName={displayName}
               signature={signature}

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { ChangeEvent } from "react";
-import { Badge, Button, Input } from "@dusrel/ui";
+import { Button, Input } from "@dusrel/ui";
 import { t, type Locale } from "@dusrel/locales";
 
 export type ComposeEncryption = "password" | "file" | "dusrel" | "standard";
@@ -26,6 +26,7 @@ export interface ComposePanelProps {
   initialSubject?: string;
   initialBody?: string;
   initialEncryption?: ComposeEncryption;
+  docked?: boolean;
   onSend: (payload: ComposePayload) => void;
   onSaveDraft: (payload: ComposePayload) => void;
   onDeleteDraft: () => void;
@@ -52,6 +53,7 @@ export function ComposePanel({
   initialSubject = "",
   initialBody = "",
   initialEncryption = "standard",
+  docked = false,
   onSend,
   onSaveDraft,
   onDeleteDraft,
@@ -62,6 +64,7 @@ export function ComposePanel({
   const [bcc, setBcc] = useState("");
   const [showCc, setShowCc] = useState(false);
   const [showBcc, setShowBcc] = useState(false);
+  const [showFormatting, setShowFormatting] = useState(false);
   const [subject, setSubject] = useState(initialSubject);
   const [body, setBody] = useState(initialBody);
   const [encryption, setEncryption] = useState<ComposeEncryption>(initialEncryption);
@@ -144,7 +147,7 @@ export function ComposePanel({
 
   const panelClass = fullScreen
     ? "fixed inset-0 z-50 flex flex-col rounded-none border border-slate-200 bg-white text-slate-900 dark:border-white/10 dark:bg-[#1e1e1e] dark:text-[#e8eaed]"
-    : "relative flex flex-col rounded-xl border border-slate-200 bg-white text-slate-900 shadow-lg dark:border-white/10 dark:bg-[#1e1e1e] dark:text-[#e8eaed]";
+    : `relative flex flex-col ${docked ? "rounded-t-xl" : "rounded-xl"} border border-slate-200 bg-white text-slate-900 shadow-lg dark:border-white/10 dark:bg-[#1e1e1e] dark:text-[#e8eaed]`;
 
   // Minimized bar: only the subject plus the expand button, per spec.
   if (collapsed) {
@@ -162,7 +165,7 @@ export function ComposePanel({
     <section className={panelClass} aria-label={t(locale, "composePanelTitle")}>
       <header className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-white/10">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#4d90fe] text-sm font-semibold text-white" aria-hidden="true">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#4d90fe] via-purple-400 to-pink-400 text-sm font-semibold text-white" aria-hidden="true">
             D
           </span>
           <span className="truncate text-sm font-medium">{displayName}</span>
@@ -209,6 +212,7 @@ export function ComposePanel({
         </div>
 
         <div className="flex flex-col gap-2">
+          {showFormatting ? (
           <div className="flex flex-wrap gap-1" role="toolbar" aria-label={t(locale, "composePanelBody")}>
             <Button variant="ghost" onClick={() => wrapSelection("bold")} aria-label={t(locale, "composePanelBold")}>
               {t(locale, "composePanelBold")}
@@ -220,6 +224,7 @@ export function ComposePanel({
               {t(locale, "composePanelList")}
             </Button>
           </div>
+          ) : null}
           {/* Native textarea (not @dusrel/ui Textarea): the formatting toolbar
               needs a ref for cursor/selection restore, and ui Textarea does
               not forward one. Classes match ui Textarea exactly. */}
@@ -234,35 +239,30 @@ export function ComposePanel({
           <p className="text-xs text-slate-500 dark:text-slate-400">{t(locale, "composePanelSentFrom")}</p>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFiles} aria-label={t(locale, "composePanelChooseFiles")} />
+        <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFiles} aria-label={t(locale, "composePanelChooseFiles")} />
+        {files.length > 0 ? (
           <div>
-            <Button variant="secondary" onClick={() => fileRef.current?.click()}>
-              {t(locale, "composePanelChooseFiles")}
-            </Button>
+            <p className="mb-1 text-sm font-medium text-slate-700 dark:text-slate-300">{t(locale, "composePanelAttachments")}</p>
+            <ul className="flex flex-col gap-1">
+              {files.map((file, index) => (
+                <li key={`${file.name}-${index}`} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-white/10">
+                  <span className="min-w-0 truncate">{file.name}</span>
+                  <Button variant="ghost" onClick={() => setFiles((prev) => prev.filter((_, i) => i !== index))} aria-label={t(locale, "composePanelRemoveFile")}>
+                    {t(locale, "composePanelRemoveFile")}
+                  </Button>
+                </li>
+              ))}
+            </ul>
           </div>
-          {files.length > 0 ? (
-            <div>
-              <p className="mb-1 text-sm font-medium text-slate-700 dark:text-slate-300">{t(locale, "composePanelAttachments")}</p>
-              <ul className="flex flex-col gap-1">
-                {files.map((file, index) => (
-                  <li key={`${file.name}-${index}`} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-white/10">
-                    <span className="min-w-0 truncate">{file.name}</span>
-                    <Button variant="ghost" onClick={() => setFiles((prev) => prev.filter((_, i) => i !== index))} aria-label={t(locale, "composePanelRemoveFile")}>
-                      {t(locale, "composePanelRemoveFile")}
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-        </div>
+        ) : null}
 
         <div className="flex flex-col gap-3 border-t border-slate-200 pt-4 dark:border-white/10">
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="primary" disabled={sendDisabled} onClick={() => onSend(payload())}>
+            {/* Plain button, not @dusrel/ui Button: ui Button spreads props after
+                its own className, so a custom colour className would drop its base styles. */}
+            <button type="button" disabled={sendDisabled} onClick={() => onSend(payload())} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">
               {t(locale, "composePanelSend")}
-            </Button>
+            </button>
             <Button variant="secondary" onClick={() => onSaveDraft(payload())}>
               {t(locale, "composePanelSaveDraft")}
             </Button>
@@ -281,20 +281,31 @@ export function ComposePanel({
               </select>
             </label>
             <span className="flex-1" aria-hidden="true" />
-            {/* Dusrel has no AI features: this button is present but disabled,
-                labelled as coming soon, and must never imply it works. */}
-            <Button variant="ghost" disabled>
-              {t(locale, "composePanelAiAssistant")} <Badge>{t(locale, "composePanelAiComingSoon")}</Badge>
-            </Button>
-            <Button variant="ghost" onClick={insertSignature}>
-              {t(locale, "composePanelInsertSignature")}
-            </Button>
-            <Button variant="ghost" onClick={() => fileRef.current?.click()}>
-              {t(locale, "composePanelAttachFiles")}
-            </Button>
-            <Button variant="ghost" onClick={onDeleteDraft}>
-              {t(locale, "composePanelDeleteDraft")}
-            </Button>
+            {/* Dusrel has no AI features: this icon is disabled and labelled
+                as coming soon, and must never imply it works. */}
+            <button type="button" disabled aria-label="AI assistant (coming soon)" title="AI assistant (coming soon)" className="rounded-lg p-2 text-slate-400 opacity-50 dark:text-slate-500">
+              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
+                <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z" />
+              </svg>
+            </button>
+            <button type="button" onClick={insertSignature} aria-label={t(locale, "composePanelInsertSignature")} title={t(locale, "composePanelInsertSignature")} className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5">
+              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+              </svg>
+            </button>
+            <button type="button" onClick={() => fileRef.current?.click()} aria-label={t(locale, "composePanelAttachFiles")} title={t(locale, "composePanelAttachFiles")} className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5">
+              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+              </svg>
+            </button>
+            <button type="button" onClick={() => setShowFormatting((prev) => !prev)} aria-pressed={showFormatting} aria-label="Aa" title="Aa" className="rounded-lg px-2 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5">
+              Aa
+            </button>
+            <button type="button" onClick={onDeleteDraft} aria-label={t(locale, "composePanelDeleteDraft")} title={t(locale, "composePanelDeleteDraft")} className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5">
+              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              </svg>
+            </button>
           </div>
 
           {encryption === "password" ? (

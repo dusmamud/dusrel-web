@@ -24,8 +24,8 @@ export function Field({ label, children }: { label: string; children: ReactNode 
   );
 }
 
-export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className="w-full rounded-lg border border-slate-300 dark:border-white/20 bg-white dark:bg-[#1e1e1e] px-3 py-2 text-sm text-slate-900 dark:text-[#e8eaed] outline-none focus:border-[#4d90fe] focus:ring-2 focus:ring-[#4d90fe]/30" {...props} />;
+export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
+  return <input className={`w-full rounded-lg border border-slate-300 dark:border-white/20 bg-white dark:bg-[#1e1e1e] px-3 py-2 text-sm text-slate-900 dark:text-[#e8eaed] outline-none focus:border-[#4d90fe] focus:ring-2 focus:ring-[#4d90fe]/30 ${className ?? ""}`} {...props} />;
 }
 
 export function Textarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {

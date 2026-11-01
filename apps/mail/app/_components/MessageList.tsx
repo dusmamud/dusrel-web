@@ -15,7 +15,12 @@ export function formatMessageTime(dateIso: string, locale: Locale): string {
     date.getMonth() === now.getMonth() &&
     date.getDate() === now.getDate();
   if (sameDay) {
-    return new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(date);
+    const time = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(date);
+    const secs = Math.floor((now.getTime() - date.getTime()) / 1000);
+    if (secs >= 0 && secs < 60) return `${time} (${secs} ${t(locale, "msgSecondsAgo")})`;
+    const mins = Math.floor(secs / 60);
+    if (mins >= 1 && mins < 60) return `${time} (${mins} ${t(locale, "msgMinutesAgo")})`;
+    return time;
   }
   return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(date);
 }
@@ -28,14 +33,14 @@ export function splitSender(from: string): { name: string; address: string | nul
 }
 
 const AVATAR_COLORS = [
-  "bg-slate-500",
-  "bg-[#4d90fe]",
-  "bg-green-600",
-  "bg-amber-600",
-  "bg-purple-600",
+  "bg-gradient-to-br from-slate-400 to-slate-600",
+  "bg-gradient-to-br from-[#4d90fe] to-purple-500",
+  "bg-gradient-to-br from-green-400 to-teal-600",
+  "bg-gradient-to-br from-amber-400 to-orange-500",
+  "bg-gradient-to-br from-purple-400 to-pink-500",
 ];
 
-/** Deterministic avatar colour from the sender string (slate/blue/green/amber/purple only). */
+/** Deterministic avatar gradient from the sender string (vivid gradients, like the reference). */
 function avatarColor(sender: string): string {
   let hash = 0;
   for (let i = 0; i < sender.length; i++) hash = (hash * 31 + sender.charCodeAt(i)) >>> 0;
@@ -194,13 +199,13 @@ export function MessageList({
   return (
     <div className="w-full bg-white text-slate-900 dark:bg-[#121212] dark:text-[#e8eaed]">
       {isSearch ? <h2 className="px-4 pt-4 text-lg font-semibold">{title}</h2> : null}
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 px-4 py-3 dark:border-white/10">
-        <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium">
-          <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} className="h-4 w-4 accent-[#4d90fe]" />
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-3 py-3 dark:border-white/10">
+        <button type="button" onClick={toggleSelectAll} aria-label={t(locale, "msgSelectAll")} className="inline-flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-[#e8eaed]">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="9" />{allVisibleSelected ? <path d="M8 12.5l2.5 2.5L16 9.5" /> : null}</svg>
           {t(locale, "msgSelectAll")}
-        </label>
+        </button>
         <Button variant="secondary" onClick={onMarkAllRead}>
-          {t(locale, "msgMarkAllRead")}
+          ✉ {t(locale, "msgMarkAllRead")}
         </Button>
         <div className="relative ml-auto">
           <Button variant="secondary" onClick={() => setFilterOpen((open) => !open)} aria-haspopup="menu" aria-expanded={filterOpen}>
@@ -242,7 +247,7 @@ export function MessageList({
               <li key={message.id}>
                 <div
                   onClick={() => onSelect(message.id)}
-                  className={`group flex cursor-pointer items-center gap-2 border-b border-slate-200 px-4 py-3 hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/5 ${
+                  className={`group flex cursor-pointer items-center gap-2 border-b border-slate-200 px-4 py-2 hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/5 ${
                     isSelected ? "bg-slate-100 dark:bg-white/10" : ""
                   }`}
                 >
@@ -256,7 +261,7 @@ export function MessageList({
                     }}
                     onClick={(e) => e.stopPropagation()}
                     aria-label={sender.name}
-                    className="h-4 w-4 shrink-0 accent-[#4d90fe] opacity-0 checked:opacity-100 focus:opacity-100 group-hover:opacity-100"
+                    className="h-4 w-4 shrink-0 accent-[#4d90fe] opacity-0 checked:opacity-100 focus:opacity-100 group-hover:opacity-100 max-lg:opacity-100 max-sm:hidden"
                   />
                   <span
                     aria-hidden="true"
@@ -264,7 +269,7 @@ export function MessageList({
                   >
                     {initial}
                   </span>
-                  <span className="max-w-[120px] shrink-0 truncate text-[15px] font-semibold text-slate-900 sm:max-w-[180px] dark:text-[#e8eaed]">
+                  <span className="max-w-[90px] shrink-0 truncate text-base font-bold text-slate-900 sm:max-w-[180px] dark:text-[#e8eaed]">
                     {sender.name}
                   </span>
                   <button
@@ -274,15 +279,15 @@ export function MessageList({
                       e.stopPropagation();
                       onToggleStar(message.id);
                     }}
-                    className={`shrink-0 text-base leading-none ${message.starred ? "text-yellow-500" : "text-slate-400 hover:text-yellow-500"}`}
+                    className={`-m-2 shrink-0 p-2 text-base leading-none ${message.starred ? "text-yellow-500" : "text-slate-400 hover:text-yellow-500"}`}
                   >
                     {message.starred ? "★" : "☆"}
                   </button>
-                  <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-slate-900 dark:text-[#e8eaed]">
+                  <span className="min-w-0 flex-1 truncate text-base font-bold text-slate-900 dark:text-[#e8eaed]">
                     {message.subject}
                   </span>
                   <span className="hidden min-w-0 flex-1 truncate text-sm text-slate-500 sm:block dark:text-slate-400">{message.body}</span>
-                  <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">
+                  <span className="shrink-0 text-[13px] text-slate-500 dark:text-slate-400">
                     {formatMessageTime(message.date, locale)}
                   </span>
                 </div>

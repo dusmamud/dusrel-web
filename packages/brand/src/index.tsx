@@ -107,3 +107,73 @@ export function Logo({ label }: { label: string }) {
     </span>
   );
 }
+
+const CARD_OPTIONS: { label: string; value: ThemeChoice; icon: React.ReactNode }[] = [
+  {
+    label: "System",
+    value: "system",
+    icon: (
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+        <rect x="2" y="3" width="20" height="14" rx="2" />
+        <line x1="8" y1="21" x2="16" y2="21" />
+        <line x1="12" y1="17" x2="12" y2="21" />
+      </svg>
+    ),
+  },
+  {
+    label: "Dark",
+    value: "dark",
+    icon: (
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+      </svg>
+    ),
+  },
+  {
+    label: "Light",
+    value: "light",
+    icon: (
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+      </svg>
+    ),
+  },
+];
+
+// Three-card appearance picker (System / Dark / Light), same theme key and
+// apply logic as ThemeToggle. Used by the mail settings pane, where the
+// reference shows cards, not a segmented control.
+export function AppearanceCards() {
+  const [choice, setChoice] = useState<ThemeChoice>("system");
+  useEffect(() => {
+    const current = storedTheme();
+    setChoice(current);
+    applyTheme(current);
+  }, []);
+  const pick = (next: ThemeChoice) => {
+    try {
+      window.localStorage.setItem(THEME_KEY, next);
+    } catch {
+      // Private mode must not break the picker.
+    }
+    setChoice(next);
+    applyTheme(next);
+  };
+  return (
+    <div className="grid w-full grid-cols-3 gap-2" role="group" aria-label="Appearance">
+      {CARD_OPTIONS.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => pick(opt.value)}
+          aria-pressed={choice === opt.value}
+          className={`flex flex-col items-center gap-1 rounded-lg border px-2 py-3 text-sm font-medium ${choice === opt.value ? "border-slate-300 bg-slate-100 text-slate-900 dark:border-white/20 dark:bg-white/10 dark:text-[#e8eaed]" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-[#1e1e1e] dark:text-slate-300 dark:hover:bg-white/5"}`}
+        >
+          {opt.icon}
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}

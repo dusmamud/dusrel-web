@@ -60,10 +60,10 @@ export function ReadingView({
         <Button variant="ghost" onClick={onBack} aria-label={t(locale, "msgBack")}>
           ← {t(locale, "msgBack")}
         </Button>
-        <Button variant="secondary" onClick={onTrash}>
+        <Button variant="ghost" onClick={onTrash}>
           {t(locale, "msgTrash")}
         </Button>
-        <Button variant="secondary" onClick={onJunk}>
+        <Button variant="ghost" onClick={onJunk}>
           {t(locale, "msgJunk")}
         </Button>
         <label className="inline-flex items-center gap-2 text-sm font-medium">
@@ -121,7 +121,7 @@ export function ReadingView({
         </div>
       </div>
 
-      <h1 className="mt-4 text-[22px] font-bold">{message.subject}</h1>
+      <h1 className="mt-4 text-2xl font-bold">{message.subject}</h1>
       <div className="mt-3 flex items-start gap-3">
         <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-pink-400 to-orange-300 text-base font-semibold text-white">
           {(sender.name.charAt(0) || "?").toUpperCase()}

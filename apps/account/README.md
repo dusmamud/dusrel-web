@@ -16,6 +16,10 @@ URLs/paths `docs/27-production-urls-paths.md` me hain).
   (invite-gated), `/forgot-password`, `/profile`,
   `/password`, `/two-factor`, `/recovery`, `/sessions`,
   `/app-passwords` — aur har ek ka `/hi/` counterpart.
+- Brand shared hai (`packages/brand`, 2026-10-31): dusrel.com
+  site se theme (Light/Dark/System), fonts (Sora + Inter)
+  aur sparkle logo — header me Logo + ThemeToggle lagte
+  hain, aur saare surfaces par dark mode classes hain.
 - Login/signup flow doc 28 ke hisab se hai: `return_to`
   parameter ko server-rule se validate karke (https only,
   exact host allowlist, single-slash path) success ke baad

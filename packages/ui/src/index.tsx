@@ -6,8 +6,8 @@ export function Button({ children, variant = "primary", ...props }: ButtonHTMLAt
     variant === "primary"
       ? "bg-[#4d90fe] text-white hover:bg-[#3b7de8]"
       : variant === "secondary"
-        ? "border border-gray-300 bg-white text-gray-800 hover:bg-gray-50"
-        : "text-gray-700 hover:bg-gray-100";
+        ? "border border-slate-300 dark:border-white/20 bg-white dark:bg-[#1e1e1e] text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5"
+        : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5";
   return (
     <button className={`${base} ${styles}`} {...props}>
       {children}
@@ -18,20 +18,20 @@ export function Button({ children, variant = "primary", ...props }: ButtonHTMLAt
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-gray-700">{label}</span>
+      <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">{label}</span>
       {children}
     </label>
   );
 }
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-[#4d90fe] focus:ring-2 focus:ring-[#4d90fe]/30" {...props} />;
+  return <input className="w-full rounded-lg border border-slate-300 dark:border-white/20 bg-white dark:bg-[#1e1e1e] px-3 py-2 text-sm text-slate-900 dark:text-[#e8eaed] outline-none focus:border-[#4d90fe] focus:ring-2 focus:ring-[#4d90fe]/30" {...props} />;
 }
 
 export function Textarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-[#4d90fe] focus:ring-2 focus:ring-[#4d90fe]/30" {...props} />;
+  return <textarea className="w-full rounded-lg border border-slate-300 dark:border-white/20 bg-white dark:bg-[#1e1e1e] px-3 py-2 text-sm text-slate-900 dark:text-[#e8eaed] outline-none focus:border-[#4d90fe] focus:ring-2 focus:ring-[#4d90fe]/30" {...props} />;
 }
 
 export function Badge({ children }: { children: ReactNode }) {
-  return <span className="inline-flex rounded-full bg-[#4d90fe]/10 px-2 py-0.5 text-xs font-medium text-[#2f6fd6]">{children}</span>;
+  return <span className="inline-flex rounded-full bg-[#4d90fe]/10 px-2 py-0.5 text-xs font-medium text-[#2f6fd6] dark:text-blue-300">{children}</span>;
 }

@@ -11,6 +11,7 @@ import {
   validateReturnTo,
 } from "@dusrel/auth";
 import { counterpartPath, localePath, t, type Locale } from "@dusrel/locales";
+import { Logo, ThemeToggle } from "@dusrel/brand";
 import { Button, Field, Input } from "@dusrel/ui";
 
 function goAfterAuth(returnToRaw: string | null, locale: Locale, router: ReturnType<typeof useRouter>) {
@@ -34,11 +35,15 @@ function goAfterAuth(returnToRaw: string | null, locale: Locale, router: ReturnT
 function AuthLayout({ children, currentPath, locale, title }: { children: React.ReactNode; currentPath: string; locale: Locale; title: string }) {
   return (
     <div className="mx-auto max-w-md px-4 py-16">
+      <div className="mb-8 flex items-center justify-between">
+        <Logo label={t(locale, "accountName")} />
+        <ThemeToggle />
+      </div>
       <h1 className="text-2xl font-bold">{title}</h1>
-      <p className="mt-2 text-sm text-gray-600">{t(locale, "demoAccountNote")}</p>
+      <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{t(locale, "demoAccountNote")}</p>
       <div className="mt-6">{children}</div>
       <p className="mt-6 text-sm">
-        <a href={counterpartPath(locale, currentPath)} className="text-[#2f6fd6] hover:underline">
+        <a href={counterpartPath(locale, currentPath)} className="text-[#2f6fd6] dark:text-blue-300 hover:underline">
           {locale === "en" ? "हिन्दी" : "English"}
         </a>
       </p>
@@ -98,11 +103,11 @@ export function LoginForm({ currentPath, locale }: { currentPath: string; locale
         </Button>
       </form>
       <p className="mt-4 text-sm">
-        <a href={localePath(locale, "/forgot-password")} className="text-[#2f6fd6] hover:underline">
+        <a href={localePath(locale, "/forgot-password")} className="text-[#2f6fd6] dark:text-blue-300 hover:underline">
           {t(locale, "forgotPassword")}
         </a>{" "}
         ·{" "}
-        <a href={localePath(locale, "/signup")} className="text-[#2f6fd6] hover:underline">
+        <a href={localePath(locale, "/signup")} className="text-[#2f6fd6] dark:text-blue-300 hover:underline">
           {t(locale, "signUpTitle")}
         </a>
       </p>
@@ -147,7 +152,7 @@ export function SignupForm({ currentPath, locale }: { currentPath: string; local
 
   return (
     <AuthLayout currentPath={currentPath} locale={locale} title={t(locale, "signUpTitle")}>
-      <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">{t(locale, "inviteOnlyNote")}</p>
+      <p className="mb-4 rounded-lg bg-amber-50 dark:bg-amber-950 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">{t(locale, "inviteOnlyNote")}</p>
       <form className="space-y-4" onSubmit={handleSubmit}>
         <Field label={t(locale, "email")}>
           <Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="name@dusrel.com" required />
@@ -159,7 +164,7 @@ export function SignupForm({ currentPath, locale }: { currentPath: string; local
           <Input value={invite} onChange={(e) => setInvite(e.target.value)} placeholder="(Optional in Beta)" />
         </Field>
         {error && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-800 border border-red-200">
+          <div className="rounded-lg bg-red-50 dark:bg-red-950 p-3 text-sm text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800">
             {error}
           </div>
         )}
@@ -198,9 +203,9 @@ export function ForgotForm({ currentPath, locale }: { currentPath: string; local
 
   return (
     <AuthLayout currentPath={currentPath} locale={locale} title={t(locale, "forgotPassword")}>
-      <p className="mb-4 text-sm text-gray-600">{t(locale, "forgotPasswordNote")}</p>
+      <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">{t(locale, "forgotPasswordNote")}</p>
       {sent ? (
-        <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">{t(locale, "resetLinkSent")}</p>
+        <p className="rounded-lg bg-green-50 dark:bg-green-950 px-3 py-2 text-sm text-green-800 dark:text-green-200">{t(locale, "resetLinkSent")}</p>
       ) : (
         <form className="space-y-4" onSubmit={handleSubmit}>
           <Field label={t(locale, "email")}>

@@ -1,0 +1,145 @@
+"use client";
+import { useState, type FormEvent, type ReactNode } from "react";
+import { t, type Locale } from "@dusrel/locales";
+import { Logo } from "@dusrel/brand";
+import { Button, Field, Input } from "@dusrel/ui";
+
+export type MailboxFolderId = "inbox" | "sent" | "drafts" | "archive" | "spam" | "trash";
+
+export type MailboxFolder = {
+  id: string;
+  label: string;
+  count: number;
+};
+
+const FOLDER_ICONS: Record<string, string> = {
+  inbox: "✉",
+  sent: "↗",
+  drafts: "✎",
+  archive: "▦",
+  spam: "⊘",
+  trash: "⌫",
+};
+
+export function MailboxSidebar({
+  locale,
+  folders,
+  activeId,
+  onSelect,
+  onCompose,
+  onOpenPrivacyCenter,
+  onCreateFolder,
+  aliases,
+  onCreateAlias,
+  promo,
+}: {
+  locale: Locale;
+  folders: MailboxFolder[];
+  activeId: string;
+  onSelect: (id: string) => void;
+  onCompose: () => void;
+  onOpenPrivacyCenter: () => void;
+  onCreateFolder: (name: string) => void;
+  aliases: string[];
+  onCreateAlias: () => void;
+  promo?: ReactNode;
+}) {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [folderName, setFolderName] = useState("");
+
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setFolderName("");
+  };
+
+  const submitFolder = (e: FormEvent) => {
+    e.preventDefault();
+    const name = folderName.trim();
+    if (!name) return;
+    onCreateFolder(name);
+    closeDialog();
+  };
+
+  return (
+    <aside className="flex w-full shrink-0 flex-col border-r border-slate-200 bg-white dark:border-white/10 dark:bg-[#121212] lg:w-64">
+      <div className="px-4 pb-2 pt-4">
+        <Logo label={t(locale, "shellAppName")} />
+      </div>
+      <div className="px-4 py-3">
+        {/* Plain button, not @dusrel/ui Button: ui Button spreads props after
+            its own className, so a w-full className would drop its base styles. */}
+        <button type="button" onClick={onCompose} className="w-full rounded-full bg-[#4d90fe] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#3b7de0]">
+          + {t(locale, "shellCompose")}
+        </button>
+      </div>
+      <button type="button" onClick={onOpenPrivacyCenter} className="mx-2 flex items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5">
+        <span>{t(locale, "shellPrivacyCenter")}</span>
+        <span aria-hidden="true">›</span>
+      </button>
+      <div className="mt-4 flex items-center justify-between px-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t(locale, "shellFolders")}</p>
+        <button type="button" onClick={() => setDialogOpen(true)} aria-label={t(locale, "shellAddFolder")} className="rounded-md px-2 py-0.5 text-lg leading-none text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5">
+          +
+        </button>
+      </div>
+      <nav className="mt-1 px-2">
+        {folders.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            onClick={() => onSelect(f.id)}
+            aria-current={activeId === f.id ? "page" : undefined}
+            className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm ${activeId === f.id ? "bg-slate-100 font-medium text-slate-900 dark:bg-white/10 dark:text-[#e8eaed]" : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5"}`}
+          >
+            <span className="flex min-w-0 flex-1 items-center gap-2">
+              <span aria-hidden="true" className="shrink-0 text-slate-400">{FOLDER_ICONS[f.id] ?? "▢"}</span>
+              <span className="truncate">{f.label}</span>
+            </span>
+            {f.count > 0 && <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">{f.count}</span>}
+          </button>
+        ))}
+      </nav>
+      <div className="mt-4 flex items-center justify-between px-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t(locale, "shellAliases")}</p>
+        <button type="button" onClick={onCreateAlias} aria-label={t(locale, "shellAddAlias")} className="rounded-md px-2 py-0.5 text-lg leading-none text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5">
+          +
+        </button>
+      </div>
+      <div className="mt-1 px-2">
+        {aliases.length === 0 ? (
+          <p className="px-3 py-2 text-sm text-slate-600 dark:text-slate-400">{t(locale, "shellNoAliases")}</p>
+        ) : (
+          <ul>
+            {aliases.map((alias) => (
+              <li key={alias} className="truncate px-3 py-2 text-sm text-slate-700 dark:text-slate-300">
+                {alias}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      {promo ? <div className="mt-auto border-t border-slate-200 px-4 py-4 dark:border-white/10">{promo}</div> : null}
+      {dialogOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button type="button" aria-label={t(locale, "shellCancel")} onClick={closeDialog} className="absolute inset-0 cursor-default bg-slate-900/40" />
+          <div role="dialog" aria-modal="true" aria-label={t(locale, "shellCreateFolder")} className="relative w-full max-w-sm rounded-xl border border-slate-200 bg-white p-4 shadow-lg dark:border-white/10 dark:bg-[#1e1e1e]">
+            <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-[#e8eaed]">{t(locale, "shellCreateFolder")}</h2>
+            <form onSubmit={submitFolder} className="space-y-3">
+              <Field label={t(locale, "shellFolderName")}>
+                <Input autoFocus value={folderName} onChange={(e) => setFolderName(e.target.value)} placeholder={t(locale, "shellFolderNamePlaceholder")} />
+              </Field>
+              <div className="flex gap-2">
+                <Button type="submit" disabled={!folderName.trim()}>
+                  {t(locale, "shellCreate")}
+                </Button>
+                <Button type="button" variant="secondary" onClick={closeDialog}>
+                  {t(locale, "shellCancel")}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+    </aside>
+  );
+}

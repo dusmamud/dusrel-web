@@ -69,7 +69,7 @@ site hai, is repo ki app nahi.
 ## Folder structure — docs only, code aane se pehle
 
 ```
-dusrel-web/                  # total 61 md files + mail + account Phase 1 code (apps/mail, apps/account, packages/ui, locales, api-client, auth, config)
+dusrel-web/                  # total 62 md files + mail + account Phase 1 code (apps/mail, apps/account, packages/ui, locales, api-client, auth, brand, config)
   README.md                  # ye file (web repo ke liye naya)
   docs/                      # backend ke saare 26 docs, verbatim
     00-docs-index.md
